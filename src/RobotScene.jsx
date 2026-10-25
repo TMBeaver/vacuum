@@ -41,6 +41,7 @@ export default function RobotScene({
     [hover, setHover] = useState(null),
     [failed, setFailed] = useState(false);
   current.current = {
+    theme,
     wet,
     active,
     phase,
@@ -205,6 +206,8 @@ export default function RobotScene({
       resize();
       const clock = new THREE.Clock(),
         point = new THREE.Vector3();
+      let lastTheme = theme,
+        themeProgress = 1;
       let elapsed = 0,
         sweepTime = 0,
         wasWorking = false,
@@ -221,6 +224,8 @@ export default function RobotScene({
           ["departing", "cleaning", "wet", "returning", "emptying"].includes(
             live.phase,
           ) ||
+          live.theme !== lastTheme ||
+          themeProgress < 0.999 ||
           live.binOpen ||
           opening > 0.005 ||
           Math.abs(mopping - Number(live.wet)) > 0.005 ||
@@ -229,6 +234,18 @@ export default function RobotScene({
         lastPaint = now;
         const dt = Math.min(clock.getDelta(), 0.05);
         elapsed += dt;
+        if (live.theme !== lastTheme) {
+          lastTheme = live.theme;
+          themeProgress = 0;
+        }
+        const themeBlend = 1 - Math.exp(-6 * dt);
+        themeProgress = THREE.MathUtils.lerp(themeProgress, 1, themeBlend);
+        model.updateTheme(live.theme === "dark", themeBlend);
+        floor.material.opacity = THREE.MathUtils.lerp(
+          floor.material.opacity,
+          live.theme === "dark" ? 0.3 : 0.16,
+          themeBlend,
+        );
         const s = current.current,
           working = ["departing", "cleaning", "wet"].includes(s.phase),
           returning = s.phase === "returning",
@@ -387,7 +404,7 @@ export default function RobotScene({
       renderer?.dispose();
       setFailed(true);
     }
-  }, [theme, mini]);
+  }, [mini]);
   const names = {
     power: active ? "Return to dock" : "Start cleaning",
     bin: "Open dust bin",

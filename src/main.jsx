@@ -117,7 +117,7 @@ function App() {
   const active = ["departing", "cleaning", "wet", "returning"].includes(
       s.phase,
     ),
-    busy = active || s.phase === "emptying",
+    busy = active || ["emptying", "compacting"].includes(s.phase),
     dark = s.settings.theme === "dark";
   useEffect(() => {
     api
@@ -275,9 +275,11 @@ function App() {
                     ? "WET CLEANING"
                     : s.phase === "cleaning"
                       ? "OUT CLEANING"
-                      : s.phase === "emptying"
-                        ? "EMPTYING THE BIN"
-                        : "DOCKED & READY"}
+                      : s.phase === "compacting"
+                        ? "REVERSIBLE SPACE SAVING"
+                        : s.phase === "emptying"
+                          ? "EMPTYING THE BIN"
+                          : "DOCKED & READY"}
             </div>
             <h1>
               {s.phase === "returning"
@@ -309,7 +311,7 @@ function App() {
             auto={s.settings.auto}
             disabled={
               working ||
-              s.phase === "emptying" ||
+              ["emptying", "compacting"].includes(s.phase) ||
               s.phase === "returning" ||
               !!s.startupError
             }
@@ -407,6 +409,23 @@ function App() {
             <ArrowUpRight size={14} />
           </button>
         </section>
+        <div className="storage-line">
+          <button
+            className="text-button"
+            aria-label="Refresh drive free space"
+            disabled={!window.vacuum}
+            onClick={() => run(() => api.storage())}
+          >
+            {s.storage?.available
+              ? `${bytes(s.storage.freeBytes)} available on ${s.storage.volume}`
+              : "Drive free space unavailable"}
+            <RotateCcw size={11} />
+          </button>
+          <span>
+            Recycling keeps files recoverable; it does not empty Windows Recycle
+            Bin.
+          </span>
+        </div>
         <footer>
           <span className="live-message" role="status">
             <i className={active ? "pulse" : ""} />
@@ -414,7 +433,7 @@ function App() {
           </span>
           <span className="footer-meta">
             {s.lastEmpty?.trashed
-              ? `${s.lastEmpty.trashed} FILES RECYCLED · ${bytes(s.lastEmpty.bytes)}`
+              ? `${s.lastEmpty.trashed} ${s.lastEmpty.trashed === 1 ? "FILE" : "FILES"} RECYCLED · ${bytes(s.lastEmpty.bytes)}`
               : s.lastRun
                 ? `LAST ROUND ${new Date(s.lastRun).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
                 : "DESIGNED TO DO LESS. BETTER."}
@@ -611,6 +630,49 @@ function App() {
                     ? "Downloads untouched for at least 180 days. Age is a hint, never a reason to delete. Choose only what you no longer need."
                     : "Collected means set aside in this list. Your files stay where they are until you empty the bin."}
                 </p>
+                {panel === "bin" && s.lastEmpty && (
+                  <div className="recycling-receipt" role="status">
+                    <strong>
+                      {s.lastEmpty.trashed}{" "}
+                      {s.lastEmpty.trashed === 1 ? "file" : "files"} sent to
+                      Windows Recycle Bin · {bytes(s.lastEmpty.bytes)}
+                    </strong>
+                    <p>
+                      Recoverable files still use drive space.{" "}
+                      {s.lastEmpty.storage?.after?.available
+                        ? `${bytes(s.lastEmpty.storage.after.freeBytes)} was available after this round.`
+                        : ""}
+                    </p>
+                    <button
+                      className="outline-button"
+                      onClick={() => run(() => api.recycleBin())}
+                    >
+                      Open Recycle Bin to restore files
+                      <ArrowUpRight size={14} />
+                    </button>
+                  </div>
+                )}
+                {panel === "bin" && s.lastCompaction && (
+                  <div
+                    className="recycling-receipt compaction-receipt"
+                    role="status"
+                  >
+                    <strong>
+                      {s.lastCompaction.compress
+                        ? `${bytes(s.lastCompaction.bytesSaved)} of file allocation saved`
+                        : s.lastCompaction.changed
+                          ? "Compression undone"
+                          : "No compression changed"}
+                    </strong>
+                    <p>
+                      {s.lastCompaction.verifiedFiles}{" "}
+                      {s.lastCompaction.verifiedFiles === 1 ? "file" : "files"}{" "}
+                      verified. Their contents remain in place. This is measured
+                      file allocation, separate from background drive-space
+                      changes.
+                    </p>
+                  </div>
+                )}
                 {panel === "old" && !old ? (
                   <div className="empty-bin">
                     <FolderClock size={40} />
@@ -644,7 +706,8 @@ function App() {
                   <>
                     <div className="file-summary">
                       <span>
-                        {files.length.toLocaleString()} files ·{" "}
+                        {files.length.toLocaleString()}{" "}
+                        {files.length === 1 ? "file" : "files"} ·{" "}
                         {bytes(files.reduce((n, f) => n + f.size, 0))}
                       </span>
                       <button
@@ -676,7 +739,9 @@ function App() {
                             <span>
                               {skipped.find((item) => item.id === f.id)
                                 ?.reason ||
-                                f.reason ||
+                                (f.compacted
+                                  ? "Compressed by Vacuum · contents kept · reversible"
+                                  : f.reason) ||
                                 f.category}
                             </span>
                           </div>
@@ -684,6 +749,63 @@ function App() {
                         </label>
                       ))}
                     </div>
+                    {panel === "bin" && (
+                      <div className="compaction-actions">
+                        <p>
+                          Need space while keeping everything? Windows can
+                          losslessly compress selected leftovers on NTFS. Up to
+                          64 files per pass. Files stay in place; results depend
+                          on their contents.
+                        </p>
+                        <div>
+                          <button
+                            className="outline-button"
+                            disabled={
+                              !selected.size ||
+                              selected.size > 64 ||
+                              working ||
+                              busy
+                            }
+                            onClick={() =>
+                              run(async () => {
+                                const result = await api.compact(
+                                  [...selected],
+                                  true,
+                                );
+                                setSkipped(result.skipped || []);
+                              })
+                            }
+                          >
+                            Save space reversibly
+                          </button>
+                          <button
+                            className="text-button"
+                            disabled={
+                              !files.some(
+                                (f) => selected.has(f.id) && f.compacted,
+                              ) ||
+                              working ||
+                              busy
+                            }
+                            onClick={() =>
+                              run(async () => {
+                                const result = await api.compact(
+                                  files
+                                    .filter(
+                                      (f) => selected.has(f.id) && f.compacted,
+                                    )
+                                    .map((f) => f.id),
+                                  false,
+                                );
+                                setSkipped(result.skipped || []);
+                              })
+                            }
+                          >
+                            Undo compression
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="sheet-bottom">
                       {panel === "old" ? (
                         <button

@@ -17,6 +17,9 @@ const { createCleaner } = require("./cleaner.cjs");
 const { isDue } = require("./schedule.cjs");
 const { classifyScanResult } = require("./defender.cjs");
 const { chooseLane, inspectTaskbar } = require("./taskbar.cjs");
+const { sampleStorage, describeStorageChange } = require("./storage.cjs");
+const { compactFiles } = require("./compression.cjs");
+let quitAfterOperation = false;
 let taskbarGeometry = null;
 
 let main,
@@ -83,6 +86,7 @@ async function saveHistory() {
       lastRun: state.lastRun,
       wetResult: state.wetResult,
       lastEmpty: state.lastEmpty,
+      lastCompaction: state.lastCompaction,
     }),
   );
 }
@@ -374,7 +378,7 @@ async function startClean() {
       (roundCancelled || state.coverage?.cancelled
         ? "Round stopped. Back at the dock."
         : state.bin.count
-          ? `${state.bin.count} files collected. Open the dust bin to recycle them.`
+          ? `${state.bin.count} ${state.bin.count === 1 ? "file" : "files"} collected. Open the dust bin to recycle ${state.bin.count === 1 ? "it" : "them"}.`
           : "Back at the dock. No eligible leftovers found.");
     send();
     if (companion) {
@@ -419,6 +423,7 @@ app.whenReady().then(async () => {
       ? path.join(fixtureRoot, "downloads")
       : app.getPath("downloads"),
     trashItem: (p) => shell.trashItem(p),
+    compactFiles,
     onProgress: (p) => {
       state.progress = p;
       state.message = `Sweeping ${p.category === "crash-dumps" ? "crash dumps" : "temporary files"} · ${p.visited.toLocaleString()} checked · ${p.found.toLocaleString()} found`;
@@ -436,11 +441,13 @@ app.whenReady().then(async () => {
     state.message = e.message;
     state.startupError = e.message;
   }
+  state.storage = await sampleStorage(fixtureRoot || os.tmpdir());
+  const workArea = screen.getPrimaryDisplay().workArea;
   main = new BrowserWindow({
-    width: 1140,
-    height: 820,
-    minWidth: 900,
-    minHeight: 680,
+    width: Math.min(1140, workArea.width - 24),
+    height: Math.min(820, workArea.height - 24),
+    minWidth: Math.min(900, workArea.width - 24),
+    minHeight: Math.min(680, workArea.height - 24),
     frame: false,
     backgroundColor: settings.theme === "dark" ? "#202320" : "#efeee9",
     show: false,
@@ -521,15 +528,22 @@ app.whenReady().then(async () => {
     const emptyStarted = Date.now();
     send();
     try {
+      const storageBefore = await sampleStorage(fixtureRoot || os.tmpdir());
       const result = await cleaner.emptyBin(ids(selection));
       await new Promise((resolve) =>
         setTimeout(resolve, Math.max(0, 900 - (Date.now() - emptyStarted))),
       );
       state.bin = await cleaner.getBin();
+      state.storage = await sampleStorage(fixtureRoot || os.tmpdir());
       state.lastEmpty = {
         trashed: result.trashed,
         bytes: result.bytes,
         time: new Date().toISOString(),
+        storage: describeStorageChange(
+          storageBefore,
+          state.storage,
+          result.bytes,
+        ),
       };
       await saveHistory();
       state.message = `${result.trashed} ${result.trashed === 1 ? "file" : "files"} sent to Recycle Bin.${result.skipped.length ? " Changed or inaccessible files were skipped." : ""}`;
@@ -547,6 +561,41 @@ app.whenReady().then(async () => {
     send();
     return state.bin;
   });
+  ipcMain.handle("vacuum:compact", async (_e, selection, compress = true) => {
+    if (controller || state.phase !== "docked")
+      throw Error("Return to the dock before a reversible space-saving pass.");
+    if (typeof compress !== "boolean")
+      throw Error("Invalid compression action.");
+    state.phase = "compacting";
+    state.message = compress
+      ? "Packing selected leftovers without removing their contents."
+      : "Restoring original file allocation.";
+    send();
+    try {
+      const before = await sampleStorage(fixtureRoot || os.tmpdir());
+      const result = await cleaner.compactBin(ids(selection), compress);
+      state.bin = await cleaner.getBin();
+      state.storage = await sampleStorage(fixtureRoot || os.tmpdir());
+      state.lastCompaction = {
+        ...result,
+        bin: undefined,
+        compress,
+        time: new Date().toISOString(),
+        storage: { before, after: state.storage },
+      };
+      await saveHistory();
+      state.message = !result.verifiedFiles
+        ? "No files changed. Review any reported errors."
+        : compress
+          ? `${result.bytesSaved.toLocaleString()} bytes of file allocation saved; ${result.verifiedFiles} ${result.verifiedFiles === 1 ? "file" : "files"} verified.`
+          : `Compression undone for ${result.changed} files. ${result.verifiedFiles} ${result.verifiedFiles === 1 ? "file" : "files"} verified.`;
+      return result;
+    } finally {
+      state.phase = "docked";
+      send();
+      if (quitAfterOperation) app.quit();
+    }
+  });
   ipcMain.handle("vacuum:old", () => cleaner.reviewOldFiles());
   ipcMain.handle("vacuum:collect", async (_e, selection) => {
     if (controller || state.phase !== "docked")
@@ -558,6 +607,22 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle("vacuum:security", () =>
     shell.openExternal("windowsdefender://threat"),
+  );
+  ipcMain.handle("vacuum:storage", async () => {
+    state.storage = await sampleStorage(fixtureRoot || os.tmpdir());
+    send();
+    return state.storage;
+  });
+  ipcMain.handle(
+    "vacuum:recycle-bin",
+    () =>
+      new Promise((resolve, reject) => {
+        const child = spawn("explorer.exe", ["shell:RecycleBinFolder"], {
+          windowsHide: true,
+        });
+        child.once("spawn", () => resolve(true));
+        child.once("error", reject);
+      }),
   );
   ipcMain.handle("vacuum:window", (_e, action) => {
     if (action === "minimize") main.minimize();
@@ -586,7 +651,14 @@ app.whenReady().then(async () => {
   }
 });
 app.on("second-instance", showMain);
-app.on("before-quit", () => {
+app.on("before-quit", (event) => {
+  if (state.phase === "compacting") {
+    event.preventDefault();
+    quitAfterOperation = true;
+    state.message = "Finishing the reversible file pass before quitting.";
+    send();
+    return;
+  }
   quitting = true;
   controller?.abort();
   cleaner?.close();

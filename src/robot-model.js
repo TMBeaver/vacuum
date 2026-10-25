@@ -69,6 +69,13 @@ export function createRobot(dark) {
     dock = new THREE.Group(),
     interactive = [],
     anchors = {};
+  const themeTargets = [];
+  const palette = (material, darkColor, lightColor) =>
+    themeTargets.push({
+      material,
+      dark: new THREE.Color(darkColor),
+      light: new THREE.Color(lightColor),
+    });
   const body = new THREE.MeshPhysicalMaterial({
     color: dark ? 0x242b29 : 0xc8cdc4,
     metalness: dark ? 0.6 : 0.16,
@@ -192,7 +199,8 @@ export function createRobot(dark) {
     const icon = mesh(
       new THREE.PlaneGeometry(r * 1.35, r * 1.35),
       new THREE.MeshBasicMaterial({
-        map: faceTexture(action, dark ? "#c5d6b1" : "#516744"),
+        map: faceTexture(action, "#ffffff"),
+        color: dark ? 0xc5d6b1 : 0x516744,
         transparent: true,
         depthWrite: false,
       }),
@@ -203,6 +211,7 @@ export function createRobot(dark) {
       action,
     );
     icon.rotation.x = -Math.PI / 2;
+    palette(icon.material, 0xc5d6b1, 0x516744);
     anchor(action, 0, 0.04, 0, buttonGroup);
   }
   // The front hatch pivots at its hinge and the removable cassette rises from its well.
@@ -276,7 +285,8 @@ export function createRobot(dark) {
   const logo = mesh(
     new THREE.PlaneGeometry(0.91, 0.23),
     new THREE.MeshBasicMaterial({
-      map: textTexture("vacuum", dark ? "#aab6a8" : "#6b7864"),
+      map: textTexture("vacuum", "#ffffff"),
+      color: dark ? 0xaab6a8 : 0x6b7864,
       transparent: true,
       depthWrite: false,
     }),
@@ -287,6 +297,7 @@ export function createRobot(dark) {
     "bin",
   );
   logo.rotation.x = -Math.PI / 2;
+  palette(logo.material, 0xaab6a8, 0x6b7864);
   anchor("bin", 0, 0.07, 1.17, hatch);
   const mop = new THREE.Group();
   mop.position.set(0, 0.14, -1.52);
@@ -365,10 +376,11 @@ export function createRobot(dark) {
     dock,
     "station",
   );
-  mesh(
+  const dockWord = mesh(
     new THREE.PlaneGeometry(0.62, 0.16),
     new THREE.MeshBasicMaterial({
-      map: textTexture("vacuum", dark ? "#a0ad95" : "#66775a"),
+      map: textTexture("vacuum", "#ffffff"),
+      color: dark ? 0xa0ad95 : 0x66775a,
       transparent: true,
     }),
     0,
@@ -386,6 +398,12 @@ export function createRobot(dark) {
       0.2,
       dock,
     );
+  palette(body, 0x242b29, 0xc8cdc4);
+  palette(porcelain, 0x141b18, 0xe4e5dc);
+  palette(metal, 0x7b897f, 0x9aa694);
+  palette(binMaterial, 0x7f9370, 0x9eac89);
+  palette(dockBody, 0x1d2820, 0xbfc8b8);
+  palette(dockWord.material, 0xa0ad95, 0x66775a);
   dock.position.z = -2.68;
   anchor("station", 1.03, 1.25, -0.4, dock);
   return {
@@ -401,5 +419,19 @@ export function createRobot(dark) {
     scanner,
     buttons,
     led,
+    updateTheme(dark, blend) {
+      for (const target of themeTargets)
+        target.material.color.lerp(dark ? target.dark : target.light, blend);
+      body.metalness = THREE.MathUtils.lerp(
+        body.metalness,
+        dark ? 0.6 : 0.16,
+        blend,
+      );
+      porcelain.metalness = THREE.MathUtils.lerp(
+        porcelain.metalness,
+        dark ? 0.3 : 0.08,
+        blend,
+      );
+    },
   };
 }

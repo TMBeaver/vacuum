@@ -32,7 +32,8 @@ async function fixture(t, options = {}) {
   );
   // Cleanup is restricted to the absolute mkdtemp fixture that this test owns.
   t.after(async () => {
-    await fs.rm(root, { recursive: true, force: true });
+    if (process.env.VACUUM_PRESERVE_FIXTURES !== "1")
+      await fs.rm(root, { recursive: true, force: true });
   });
   async function file(relative, age = 10, content = "fixture") {
     const filename = path.join(root, relative);
@@ -125,7 +126,7 @@ test("changed, missing and failed-trash files are left in the bin without perman
   const failure = await f.file("temp/failure.tmp");
   const scan = await f.engine.scan();
   await fs.writeFile(changed, "a newly changed user file");
-  await fs.unlink(missing);
+  await fs.rename(missing, `${missing}.retained-by-test`);
   const result = await f.engine.emptyBin(scan.files.map((file) => file.id));
   assert.equal(result.trashed, 0);
   assert.equal(result.skipped.length, 3);

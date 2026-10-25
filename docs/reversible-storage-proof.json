@@ -1,0 +1,45 @@
+{
+  "fixtureBytes": 8388608,
+  "bytesSaved": 7340032,
+  "compressedAllocation": 1048576,
+  "originalAllocation": 8388608,
+  "originalHash": "03f87e8c83f63b7993d2732457736a926ae0a519c076ab1d20cc3e1283481d0d",
+  "compressedHash": "03f87e8c83f63b7993d2732457736a926ae0a519c076ab1d20cc3e1283481d0d",
+  "restoredHash": "03f87e8c83f63b7993d2732457736a926ae0a519c076ab1d20cc3e1283481d0d",
+  "undoVerified": true,
+  "extraResults": {
+    "incompressible-proof.tmp": {
+      "bytesSaved": 0,
+      "verified": true,
+      "compacted": false
+    },
+    "įrašas ' [saugus].log": {
+      "bytesSaved": 917504,
+      "verified": true,
+      "compacted": true
+    }
+  },
+  "permanentlyDeletedFiles": 0,
+  "animation": {
+    "interaction": {
+      "frames": 413,
+      "averageFps": 165.00859003555874,
+      "medianMs": 6.099999999999909,
+      "p95Ms": 6.199999999999818
+    },
+    "taskbar": {
+      "animationOnly": true,
+      "seconds": 16.0057,
+      "frames": 2641,
+      "averageFps": 165.0037174256671,
+      "medianMs": 6.099999999998545,
+      "p95Ms": 6.200000000000728,
+      "minX": 18.01,
+      "maxX": 261.22,
+      "rightSeen": true,
+      "returned": true
+    },
+    "fileOperationsDuringAnimationHarness": 0
+  },
+  "scope": "Isolated synthetic fixtures on the actual Windows computer; compression was undone after verification."
+}

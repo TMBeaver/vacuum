@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { companionPose } from "./companion-path.mjs";
 
 // A quiet, low-cost taskbar animation. Pose follows a continuous capsule path:
 // straight passes with semicircular turns, rather than abrupt direction flips.
@@ -32,39 +33,6 @@ export default function TaskbarCompanion({ theme, phase }) {
     const observer = new ResizeObserver(size);
     observer.observe(el);
     size();
-    const pathPoint = (d) => {
-      const turn = Math.max(3, h * 0.11),
-        left = 42,
-        right = w - 18 - turn,
-        cy = h * 0.5,
-        line = Math.max(24, right - left),
-        arc = Math.PI * turn,
-        total = 2 * line + 2 * arc;
-      if (d < 0) {
-        const t = Math.max(0, Math.min(1, (d + 36) / 36));
-        return { x: 18 + (left - 18) * t, y: cy - turn * t, a: 0 };
-      }
-      d %= total;
-      if (d < line) return { x: left + d, y: cy - turn, a: 0 };
-      d -= line;
-      if (d < arc) {
-        const a = -Math.PI / 2 + d / turn;
-        return {
-          x: right + turn * Math.cos(a),
-          y: cy + turn * Math.sin(a),
-          a: a + Math.PI / 2,
-        };
-      }
-      d -= arc;
-      if (d < line) return { x: right - d, y: cy + turn, a: Math.PI };
-      d -= line;
-      const a = Math.PI / 2 + d / turn;
-      return {
-        x: left + turn * Math.cos(a),
-        y: cy + turn * Math.sin(a),
-        a: a + Math.PI / 2,
-      };
-    };
     const draw = (now) => {
       frame = requestAnimationFrame(draw);
       const dt = Math.min((now - last) / 1000, 0.05);
@@ -77,7 +45,7 @@ export default function TaskbarCompanion({ theme, phase }) {
       if (working && !reduced) distance += dt * 36;
       const p =
         working && !reduced
-          ? pathPoint(distance)
+          ? companionPose(w, h, distance)
           : { x: 18, y: h * 0.5, a: Math.PI };
       const speed = working ? 12 : 4.5;
       x += (p.x - x) * (1 - Math.exp(-speed * dt));

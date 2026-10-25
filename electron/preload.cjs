@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld(
     old: () => ipcRenderer.invoke("vacuum:old"),
     collect: (ids) => ipcRenderer.invoke("vacuum:collect", ids),
     security: () => ipcRenderer.invoke("vacuum:security"),
+    storage: () => ipcRenderer.invoke("vacuum:storage"),
+    recycleBin: () => ipcRenderer.invoke("vacuum:recycle-bin"),
+    compact: (ids, compress = true) =>
+      ipcRenderer.invoke("vacuum:compact", ids, compress),
     window: (action) => ipcRenderer.invoke("vacuum:window", action),
     subscribe: (callback) => {
       const fn = (_e, s) => callback(s);

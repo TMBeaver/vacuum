@@ -25,6 +25,7 @@ function createCleaner({
   localAppData,
   downloadsRoot,
   trashItem,
+  compactFiles,
   onProgress = () => {},
 }) {
   if (!userData || typeof trashItem !== "function")
@@ -121,6 +122,7 @@ function createCleaner({
       name: path.basename(item.path),
       size: item.size,
       mtimeMs: item.mtimeMs,
+      compacted: !!item.compaction?.managed,
       category: item.category,
       reason:
         item.category === "temporary"
@@ -335,7 +337,15 @@ function createCleaner({
         const fresh = new Map(found.map((file) => [file.path, file]));
         const refreshed = records.map((file) =>
           file.category !== "old-downloads" && fresh.has(file.path)
-            ? { ...fresh.get(file.path), id: file.id }
+            ? {
+                ...fresh.get(file.path),
+                id: file.id,
+                compaction:
+                  file.ino === fresh.get(file.path).ino &&
+                  file.dev === fresh.get(file.path).dev
+                    ? file.compaction
+                    : undefined,
+              }
             : file,
         );
         const pending = found.filter((file) => !existing.has(file.path));
@@ -409,6 +419,124 @@ function createCleaner({
           });
         await save([...records, ...accepted]);
         return { ...bin(), added: accepted.length, skipped };
+      }),
+    compactBin: (ids, compress = true) =>
+      run(async () => {
+        if (!compactFiles)
+          throw Error("Reversible compression is unavailable.");
+        if (
+          !Array.isArray(ids) ||
+          ids.length > 64 ||
+          ids.some((id) => typeof id !== "string")
+        )
+          throw Error("Select up to 64 bin files for a reversible pass.");
+        const selected = new Set(ids),
+          eligibleItems = [],
+          skipped = [];
+        for (const item of records.filter((item) => selected.has(item.id))) {
+          try {
+            await verify(item);
+            if (!compress && !item.compaction?.managed)
+              throw Error("This file was not compressed by Vacuum.");
+            eligibleItems.push(item);
+          } catch (error) {
+            skipped.push({ id: item.id, reason: error.message });
+          }
+        }
+        const results = eligibleItems.length
+          ? await compactFiles(eligibleItems, compress)
+          : [];
+        let changed = 0,
+          bytesSaved = 0,
+          bytesExpanded = 0;
+        const next = [...records];
+        for (const item of eligibleItems) {
+          const result = results.find((result) => result.id === item.id);
+          if (
+            !result?.ok ||
+            result.verified !== true ||
+            !Number.isSafeInteger(result.beforeBytes) ||
+            !Number.isSafeInteger(result.afterBytes) ||
+            result.beforeBytes < 0 ||
+            result.afterBytes < 0
+          ) {
+            skipped.push({
+              id: item.id,
+              reason: result?.reason || "Windows did not verify this file.",
+            });
+            continue;
+          }
+          try {
+            const root = roots.find(
+              (root) =>
+                root.path === item.root && root.category === item.category,
+            );
+            const metadata = await safeFile(item.path, root);
+            if (
+              metadata.size !== item.size ||
+              String(metadata.ino) !== item.ino ||
+              String(metadata.dev) !== item.dev
+            )
+              throw Error("File identity changed; kept for review.");
+            const wasManaged = item.compaction?.managed === true;
+            const managed = compress
+              ? wasManaged || (!result.wasCompressed && result.compressed)
+              : false;
+            const updated = {
+              ...snapshot(item.path, root, metadata),
+              id: item.id,
+              compaction: {
+                managed,
+                savedBytes: managed
+                  ? Math.max(0, result.beforeBytes - result.afterBytes) +
+                    (item.compaction?.savedBytes || 0)
+                  : 0,
+                sha256: result.sha256,
+              },
+            };
+            next[next.findIndex((record) => record.id === item.id)] = updated;
+            changed += Number(result.wasCompressed !== result.compressed);
+            bytesSaved += Math.max(0, result.beforeBytes - result.afterBytes);
+            bytesExpanded += Math.max(
+              0,
+              result.afterBytes - result.beforeBytes,
+            );
+          } catch (error) {
+            skipped.push({ id: item.id, reason: error.message });
+          }
+        }
+        await save(next);
+        return {
+          changed,
+          bytesSaved,
+          bytesExpanded,
+          verifiedFiles: results.filter((r) => r.ok && r.verified).length,
+          files: results.map(
+            ({
+              id,
+              ok,
+              beforeBytes,
+              afterBytes,
+              wasCompressed,
+              compressed,
+              verified,
+              sha256,
+              reason,
+            }) => ({
+              id,
+              ok,
+              beforeBytes,
+              afterBytes,
+              wasCompressed,
+              compressed,
+              verified,
+              sha256,
+              reason,
+            }),
+          ),
+          skipped,
+          bin: bin(),
+        };
       }),
     emptyBin: (ids) =>
       run(async () => {

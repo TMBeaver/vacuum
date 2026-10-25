@@ -113,9 +113,30 @@ const os = require("node:os");
     await page.waitForFunction(
       () => document.querySelector(".robot-scene").dataset.motion === "docked",
     );
+    await page
+      .locator(".canvas-mount canvas")
+      .evaluate((el) => (el.dataset.themeContinuity = "retained"));
+    const cameraBeforeTheme = await page
+      .locator(".robot-scene")
+      .getAttribute("data-view");
     await page.getByRole("button", { name: "Switch to light theme" }).click();
     await page.locator("html[data-theme=light]").waitFor();
     await page.waitForTimeout(800);
+    assert.equal(
+      await page
+        .locator(".canvas-mount canvas")
+        .getAttribute("data-theme-continuity"),
+      "retained",
+      "Themes must not destroy the 3D renderer",
+    );
+    assert.ok(
+      Math.abs(
+        Number(await page.locator(".robot-scene").getAttribute("data-view")) -
+          Number(cameraBeforeTheme),
+      ) < 0.01,
+      "Theme changes must preserve camera inspection",
+    );
+
     await page.screenshot({ path: "test-results/light.png" });
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByRole("switch", { name: "Enable daily autoclean" }).click();
@@ -217,6 +238,12 @@ const os = require("node:os");
       .click();
     await page
       .getByRole("heading", { name: "Nothing to empty. Nice." })
+      .waitFor();
+    const recycleState = await page.evaluate(() => window.vacuum.get());
+    assert.equal(recycleState.lastEmpty.storage.attributedFreedBytes, null);
+    assert.ok(recycleState.storage.available);
+    await page
+      .getByText("Recoverable files still use drive space.", { exact: false })
       .waitFor();
     await assert.rejects(fs.access(junk)); // Real Windows Recycle Bin, synthetic test file only.
     await page

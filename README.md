@@ -4,6 +4,12 @@ A quiet little robot vacuum for your Windows computer. Real 3D hardware, a dock 
 
 ![Vacuum in graphite](docs/vacuum-dark.png)
 
+## Development audit
+
+The active quality work is documented in [quality-audit.md](docs/quality-audit.md). Development includes an optional reversible NTFS compression pass for selected bin files, measured disk free-space readouts, and continuous material transitions that preserve the 3D camera. Stable 0.2 installers below predate these development changes. Compression is not automatic; normal undo and integrity checks pass, while interruption recovery remains an open release gate.
+
+Reproducible native checks: `node scripts/verify-storage.cjs`, `node scripts/verify-compaction.cjs`, and `node scripts/verify-animation.cjs`. They use isolated synthetic fixtures. Storage/compaction fixtures are retained rather than permanently removed. The animation-only harness is separate from real cleanup and does not prolong a scan.
+
 ## Use it
 
 Install **Vacuum Setup 0.2.0.exe** from the private repository's Releases page, or run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray; right-click its tray icon to quit.
