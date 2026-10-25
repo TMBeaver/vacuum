@@ -236,9 +236,7 @@ const os = require("node:os");
     await page
       .getByRole("button", { name: "Send to Recycle Bin", exact: true })
       .click();
-    await page
-      .getByRole("heading", { name: "Nothing to empty. Nice." })
-      .waitFor();
+    await page.getByRole("heading", { name: "The bin is empty" }).waitFor();
     const recycleState = await page.evaluate(() => window.vacuum.get());
     assert.equal(recycleState.lastEmpty.storage.attributedFreedBytes, null);
     assert.ok(recycleState.storage.available);
@@ -260,9 +258,7 @@ const os = require("node:os");
     await page
       .getByRole("button", { name: "Leave files alone", exact: true })
       .click();
-    await page
-      .getByRole("heading", { name: "Nothing to empty. Nice." })
-      .waitFor();
+    await page.getByRole("heading", { name: "The bin is empty" }).waitFor();
     await fs.access(old);
     await page.screenshot({ path: "test-results/empty-bin.png" });
     await page
@@ -306,7 +302,7 @@ const os = require("node:os");
     );
     await page.locator(".security-result").click();
     await page
-      .getByRole("heading", { name: "The wet clean.", exact: true })
+      .getByRole("heading", { name: "Security scan", exact: true })
       .waitFor();
     await page.screenshot({ path: "test-results/wet-result.png" });
     const observed = await page.evaluate(() => window.observedPhases);

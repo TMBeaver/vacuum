@@ -10,7 +10,12 @@ const assert = require("node:assert/strict");
   for (const folder of ["temp", "downloads", "local/CrashDumps"])
     await fs.mkdir(path.join(root, folder), { recursive: true });
   const app = await _electron.launch({
-    args: [path.resolve(__dirname, ".."), "--test-mode"],
+    ...(process.env.VACUUM_PACKAGED_EXE
+      ? { executablePath: process.env.VACUUM_PACKAGED_EXE }
+      : {}),
+    args: process.env.VACUUM_PACKAGED_EXE
+      ? ["--test-mode"]
+      : [path.resolve(__dirname, ".."), "--test-mode"],
     env: { ...process.env, VACUUM_TEST_ROOT: root },
   });
   try {
@@ -125,6 +130,7 @@ const assert = require("node:assert/strict");
     );
     assert.ok(loops.medianMs <= 25, "Companion frame pacing is too slow");
     const report = {
+      packaged: !!process.env.VACUUM_PACKAGED_EXE,
       interaction,
       taskbar: loops,
       fileOperationsDuringAnimationHarness: 0,

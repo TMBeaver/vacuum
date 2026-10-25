@@ -1,0 +1,12 @@
+{
+  "references": 50000,
+  "packaged": true,
+  "fileOperations": 0,
+  "openMs": 113,
+  "nextPageMs": 55,
+  "searchMs": 81,
+  "maxRenderedRows": 100,
+  "selectionPreserved": true,
+  "compactWidth": 900,
+  "corruptManifestPreserved": true
+}

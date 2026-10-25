@@ -303,7 +303,7 @@ export default function RobotScene({
             ? -1.45
             : 0
           : -opening * 1.45;
-        model.cassette.position.y = 0.43 + opening * 0.75;
+        model.cassette.position.y = 0.43 + model.deckRise + opening * 0.75;
         model.cassette.rotation.z = reduced
           ? 0
           : Math.sin(elapsed * 8) * emptying * 0.06;
@@ -317,7 +317,8 @@ export default function RobotScene({
         for (const [action, button] of Object.entries(model.buttons))
           button.position.y = damp(
             button.position.y,
-            0.75 -
+            0.75 +
+              model.deckRise -
               (pressed.current.action === action && now < pressed.current.until
                 ? 0.025
                 : 0),

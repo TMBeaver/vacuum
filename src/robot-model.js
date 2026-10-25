@@ -55,7 +55,7 @@ function textTexture(text, color) {
   canvas.height = 128;
   const c = canvas.getContext("2d");
   c.fillStyle = color;
-  c.font = "500 66px Arial";
+  c.font = '500 66px "Bahnschrift", "Segoe UI", sans-serif';
   c.textAlign = "center";
   c.textBaseline = "middle";
   c.fillText(text, 256, 64);
@@ -69,6 +69,8 @@ export function createRobot(dark) {
     dock = new THREE.Group(),
     interactive = [],
     anchors = {};
+  const deckRise = 0.18;
+  const top = (height) => height + deckRise;
   const themeTargets = [];
   const palette = (material, darkColor, lightColor) =>
     themeTargets.push({
@@ -138,10 +140,10 @@ export function createRobot(dark) {
     anchors[action] = o;
   };
   cylinder(2, 0.26, rubber, 0, 0.23, 0);
-  cylinder(2.035, 0.27, body, 0, 0.46, 0);
-  cylinder(1.99, 0.1, porcelain, 0, 0.645, 0);
-  ring(2.018, 0.025, metal, 0.59);
-  ring(1.92, 0.009, rubber, 0.7);
+  cylinder(2.035, 0.27 + deckRise, body, 0, 0.46 + deckRise / 2, 0);
+  cylinder(1.99, 0.1, porcelain, 0, top(0.645), 0);
+  ring(2.018, 0.025, metal, top(0.59));
+  ring(1.92, 0.009, rubber, top(0.7));
   for (const x of [-1.6, 1.6])
     mesh(
       new RoundedBoxGeometry(0.3, 0.24, 0.75, 3, 0.06),
@@ -154,7 +156,7 @@ export function createRobot(dark) {
     new RoundedBoxGeometry(0.78, 0.16, 0.08, 3, 0.04),
     rubber,
     0,
-    0.43,
+    0.43 + deckRise / 2,
     2.015,
   );
   const lens = new THREE.MeshPhysicalMaterial({
@@ -163,24 +165,30 @@ export function createRobot(dark) {
     roughness: 0.08,
   });
   for (const x of [-0.24, 0, 0.24])
-    mesh(new THREE.SphereGeometry(0.045, 12, 8), lens, x, 0.44, 2.063);
+    mesh(
+      new THREE.SphereGeometry(0.045, 12, 8),
+      lens,
+      x,
+      0.44 + deckRise / 2,
+      2.063,
+    );
   for (let i = 0; i < 20; i++) {
     const a = Math.PI * 0.61 + i * 0.035;
     const vent = mesh(
       new RoundedBoxGeometry(0.027, 0.1, 0.025, 2, 0.008),
       rubber,
       Math.sin(a) * 2.035,
-      0.43,
+      0.43 + deckRise / 2,
       Math.cos(a) * 2.035,
     );
     vent.rotation.y = a;
   }
-  cylinder(0.49, 0.06, rubber, 0, 0.73, -0.91);
-  cylinder(0.45, 0.19, body, 0, 0.86, -0.91);
-  ring(0.456, 0.022, led, 0.85, -0.91);
-  cylinder(0.43, 0.045, porcelain, 0, 0.98, -0.91);
+  cylinder(0.49, 0.06, rubber, 0, top(0.73), -0.91);
+  cylinder(0.45, 0.19, body, 0, top(0.86), -0.91);
+  ring(0.456, 0.022, led, top(0.85), -0.91);
+  cylinder(0.43, 0.045, porcelain, 0, top(0.98), -0.91);
   const scanner = new THREE.Group();
-  scanner.position.set(0, 0.87, -0.91);
+  scanner.position.set(0, top(0.87), -0.91);
   robot.add(scanner);
   mesh(new THREE.BoxGeometry(0.08, 0.055, 0.045), rubber, 0, 0, 0.455, scanner);
   const buttons = {};
@@ -190,9 +198,9 @@ export function createRobot(dark) {
     ["mop", -0.87, -0.73, 0.21],
     ["auto", -0.87, -0.12, 0.17],
   ]) {
-    cylinder(r + 0.027, 0.025, rubber, x, 0.72, z);
+    cylinder(r + 0.027, 0.025, rubber, x, top(0.72), z);
     const buttonGroup = new THREE.Group();
-    buttonGroup.position.set(x, 0.75, z);
+    buttonGroup.position.set(x, top(0.75), z);
     robot.add(buttonGroup);
     buttons[action] = buttonGroup;
     cylinder(r, 0.037, body, 0, 0, 0, buttonGroup, action);
@@ -219,11 +227,11 @@ export function createRobot(dark) {
     new RoundedBoxGeometry(2.35, 0.045, 1.37, 5, 0.19),
     rubber,
     0,
-    0.703,
+    top(0.703),
     0.88,
   );
   const cassette = new THREE.Group();
-  cassette.position.set(0, 0.43, 0.88);
+  cassette.position.set(0, top(0.43), 0.88);
   robot.add(cassette);
   const binMaterial = new THREE.MeshPhysicalMaterial({
     color: dark ? 0x7f9370 : 0x9eac89,
@@ -262,7 +270,7 @@ export function createRobot(dark) {
     g.rotation.set(i, i * 0.7, i * 0.3);
   }
   const hatch = new THREE.Group();
-  hatch.position.set(0, 0.747, 0.18);
+  hatch.position.set(0, top(0.747), 0.18);
   robot.add(hatch);
   mesh(
     new RoundedBoxGeometry(2.29, 0.05, 1.36, 6, 0.15),
@@ -407,6 +415,7 @@ export function createRobot(dark) {
   dock.position.z = -2.68;
   anchor("station", 1.03, 1.25, -0.4, dock);
   return {
+    deckRise,
     robot,
     dock,
     interactive,

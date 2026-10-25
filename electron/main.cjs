@@ -40,7 +40,7 @@ let settings = {
 };
 let state = {
   phase: "docked",
-  message: "Ready for a fresh start.",
+  message: "Ready to clean.",
   bin: { files: [], count: 0, bytes: 0 },
   lastRun: null,
   wetResult: null,
@@ -380,7 +380,7 @@ async function startClean() {
         ? "Round stopped. Back at the dock."
         : state.bin.count
           ? `${state.bin.count} ${state.bin.count === 1 ? "file" : "files"} collected. Open the dust bin to recycle ${state.bin.count === 1 ? "it" : "them"}.`
-          : "Back at the dock. No eligible leftovers found.");
+          : "Back at the dock. No eligible files found.");
     send();
     if (companion) {
       companion.webContents.send("vacuum:dock");
@@ -571,7 +571,7 @@ app.whenReady().then(async () => {
       throw Error("Invalid compression action.");
     state.phase = "compacting";
     state.message = compress
-      ? "Packing selected leftovers without removing their contents."
+      ? "Compressing selected files. File contents stay in place."
       : "Restoring original file allocation.";
     send();
     try {
@@ -590,7 +590,7 @@ app.whenReady().then(async () => {
       state.message = !result.verifiedFiles
         ? "No files changed. Review any reported errors."
         : compress
-          ? `${result.bytesSaved.toLocaleString()} bytes of file allocation saved; ${result.verifiedFiles} ${result.verifiedFiles === 1 ? "file" : "files"} verified.`
+          ? `${result.verifiedFiles} ${result.verifiedFiles === 1 ? "file" : "files"} verified. Open the bin to see space saved.`
           : `Compression undone for ${result.changed} files. ${result.verifiedFiles} ${result.verifiedFiles === 1 ? "file" : "files"} verified.`;
       return result;
     } finally {

@@ -75,4 +75,4 @@ Settings, the reference bin and the most recent round are stored under Electron'
 
 Reversible compression writes a flushed recovery journal before Windows changes file allocation. After an interrupted pass, Vacuum verifies the file identity and SHA-256 before restoring its Undo state. Files that cannot be verified remain protected in the bin with a reason; a pending inspection can be retried from the bin. Recovery never modifies file contents. `node scripts/verify-compression-recovery.cjs` verifies this using an actual interrupted child process and a retained synthetic fixture.
 
-This is an unsigned initial Windows release. The source and installer are private. Bundled Geist font is licensed under the [SIL Open Font License](src/assets/Geist-LICENSE.txt); library notices are included with the app.
+This is an unsigned initial Windows release. The source and installer are private. The interface uses Windows Bahnschrift and Segoe UI Variable. Library notices are included with the app.

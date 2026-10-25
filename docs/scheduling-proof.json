@@ -1,0 +1,10 @@
+{
+  "packaged": true,
+  "overdueBackgroundScan": true,
+  "sameDayRestartAndResumeSuppressed": true,
+  "overdueResumeSingleRound": true,
+  "observedPhases": ["docked", "departing", "cleaning", "returning", "docked"],
+  "contentsPreserved": true,
+  "permanentlyDeletedFiles": 0,
+  "realSleepOrSignOutPerformed": false
+}

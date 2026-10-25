@@ -10,8 +10,8 @@ main {
   padding: 0 28px;
 }
 .wordmark small {
-  letter-spacing: 1.5px;
-  font-size: 8px;
+  letter-spacing: 0;
+  font-size: 11px;
 }
 .topline {
   position: relative;
@@ -32,13 +32,13 @@ main {
   pointer-events: none;
 }
 .stage-readout h1 {
-  font-size: 23px;
-  letter-spacing: -0.8px;
-  font-weight: 450;
+  font-size: 26px;
+  letter-spacing: -0.35px;
+  font-weight: 500;
   line-height: 1.2;
 }
 .stage-readout p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.8;
   white-space: pre-line;
@@ -361,7 +361,7 @@ footer {
   font-size: 26px;
 }
 .sheet-intro {
-  font-size: 11px;
+  font-size: 12px;
 }
 .sheet-head {
   margin-bottom: 28px;
@@ -811,4 +811,50 @@ footer,
 .sheet:has(.compaction-actions) .file-list {
   max-height: calc(100dvh - 540px);
   min-height: 90px;
+}
+.file-search {
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+}
+.file-pagination {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.file-pagination > span {
+  flex: 1;
+}
+.file-no-matches {
+  padding: 22px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.station-detail small,
+.status-pill,
+.inspect-hint {
+  letter-spacing: 0.2px;
+}
+.station-detail small {
+  font-size: 10px;
+}
+.file-row strong {
+  font-size: 12px;
+}
+.file-row small,
+.file-row span {
+  font-size: 10px;
+}
+.sheet:has(.file-pagination) .file-list {
+  max-height: calc(100dvh - 640px);
 }

@@ -23,12 +23,14 @@ import {
 } from "lucide-react";
 import RobotScene from "./RobotScene";
 import TaskbarCompanion from "./TaskbarCompanion";
+import FileReview from "./FileReview";
+import { formatSize as bytes } from "./format-size.mjs";
 import "./style.css";
 import "./studio.css";
 
 const initial = {
   phase: "docked",
-  message: "Ready for a fresh start.",
+  message: "Ready to clean.",
   bin: { files: [], bytes: 0, count: 0 },
   settings: {
     theme: "dark",
@@ -60,14 +62,6 @@ const preview = {
   },
 };
 const api = window.vacuum || preview;
-export const bytes = (n) =>
-  n < 1024
-    ? `${n} B`
-    : n < 1048576
-      ? `${(n / 1024).toFixed(1)} KB`
-      : n < 1073741824
-        ? `${(n / 1048576).toFixed(1)} MB`
-        : `${(n / 1073741824).toFixed(2)} GB`;
 function Toggle({ checked, onChange, label }) {
   return (
     <button
@@ -216,7 +210,7 @@ function App() {
         <div className="wordmark">
           <span className="brand-symbol" />
           <span>vacuum</span>
-          <small>YOUR COMPUTER, A LITTLE CLEANER.</small>
+          <small>Computer care</small>
         </div>
         <div className="window-actions">
           <span className="connection">
@@ -272,28 +266,28 @@ function App() {
                 : s.phase === "returning"
                   ? "COMING HOME"
                   : s.phase === "wet"
-                    ? "WET CLEANING"
+                    ? "Security scan"
                     : s.phase === "cleaning"
-                      ? "OUT CLEANING"
+                      ? "Cleaning"
                       : s.phase === "compacting"
-                        ? "REVERSIBLE SPACE SAVING"
+                        ? "Saving space"
                         : s.phase === "emptying"
-                          ? "EMPTYING THE BIN"
-                          : "DOCKED & READY"}
+                          ? "Emptying the bin"
+                          : "Docked"}
             </div>
             <h1>
               {s.phase === "returning"
-                ? "Homeward bound."
+                ? "Returning to the dock"
                 : active
-                  ? "On a little cleaning round."
+                  ? "Cleaning"
                   : panel === "bin"
-                    ? "Let’s lift the lid."
-                    : "Ready for a round."}
+                    ? "Dust bin"
+                    : "Ready to clean"}
             </h1>
             <p>
               {active
                 ? s.message
-                : "Press the controls on your vacuum.\nDrag anywhere around it to take a look."}
+                : "Press power to start.\nDrag to rotate the vacuum."}
             </p>
           </div>
           <div className="floor-rings">
@@ -334,7 +328,7 @@ function App() {
               : "Porcelain / soft ceramic finish"}
           </span>
           <span className="inspect-hint">
-            DRAG TO EXPLORE <span>·</span> PRESS TO INTERACT
+            Drag to rotate <span>·</span> Press a control
           </span>
           {active && (
             <div className="round-readout">
@@ -344,7 +338,7 @@ function App() {
               </span>
               <span>
                 {s.progress?.found?.toLocaleString() || "0"}
-                <small>leftovers found</small>
+                <small>files collected</small>
               </span>
             </div>
           )}
@@ -359,10 +353,8 @@ function App() {
               <Trash2 size={20} />
             </span>
             <span className="bin-copy">
-              <small>DUST BIN</small>
-              <strong>
-                {s.bin.count ? bytes(s.bin.bytes) : "Fresh & empty"}
-              </strong>
+              <small>Dust bin</small>
+              <strong>{s.bin.count ? bytes(s.bin.bytes) : "Empty"}</strong>
               <em>
                 {s.bin.count
                   ? `${s.bin.count} ${s.bin.count === 1 ? "file" : "files"} collected · waiting to empty`
@@ -380,11 +372,9 @@ function App() {
               <Clock3 size={20} />
             </span>
             <span>
-              <small>DAILY ROUTINE</small>
+              <small>Daily scan</small>
               <strong>
-                {s.settings.auto
-                  ? `Every day · ${s.settings.hour}`
-                  : "On your terms"}
+                {s.settings.auto ? `Every day · ${s.settings.hour}` : "Off"}
               </strong>
               <em>
                 {s.settings.auto
@@ -402,8 +392,8 @@ function App() {
               <FolderClock size={20} />
             </span>
             <span>
-              <small>FORGOTTEN FILES</small>
-              <strong>A second look</strong>
+              <small>Downloads</small>
+              <strong>Review Downloads</strong>
               <em>Old Downloads, chosen by you</em>
             </span>
             <ArrowUpRight size={14} />
@@ -436,7 +426,7 @@ function App() {
               ? `${s.lastEmpty.trashed} ${s.lastEmpty.trashed === 1 ? "FILE" : "FILES"} RECYCLED · ${bytes(s.lastEmpty.bytes)}`
               : s.lastRun
                 ? `LAST ROUND ${new Date(s.lastRun).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-                : "DESIGNED TO DO LESS. BETTER."}
+                : "Files stay in place until you empty the bin"}
           </span>
         </footer>
         {s.wetResult && (
@@ -506,22 +496,24 @@ function App() {
             </div>
             <h2 id="sheet-title">
               {panel === "settings"
-                ? "Make yourself at home."
+                ? "Settings"
                 : panel === "old"
-                  ? "A little forgotten?"
+                  ? "Old Downloads"
                   : panel === "security"
-                    ? "The wet clean."
-                    : "A place for the leftovers."}
+                    ? "Security scan"
+                    : "Dust bin"}
             </h2>
             {panel === "settings" ? (
               <div className="settings-content">
                 <p className="sheet-intro">
-                  Small routines. A quieter computer.
+                  Choose when Vacuum runs and how it appears.
                 </p>
                 <div className="setting-row">
                   <div>
                     <h3>Daily autoclean</h3>
-                    <p>Collect leftovers once a day. The bin waits for you.</p>
+                    <p>
+                      Scan once a day. Review collected files before recycling.
+                    </p>
                   </div>
                   <Toggle
                     label="Enable daily autoclean"
@@ -530,7 +522,7 @@ function App() {
                   />
                 </div>
                 <label className="time-setting">
-                  Time to tidy
+                  Daily scan time
                   <input
                     type="time"
                     value={s.settings.hour}
@@ -581,7 +573,7 @@ function App() {
                   </p>
                 </div>
                 <div className="rules">
-                  <span className="eyebrow">A CAREFUL LITTLE HELPER</span>
+                  <span className="eyebrow">Scan rules</span>
                   <p>
                     Temporary .tmp, .temp and .log files older than 7 days.
                     Crash dumps older than 30 days. No registry tweaks or
@@ -596,8 +588,8 @@ function App() {
                 </div>
                 <h3>
                   {s.wetResult?.status === "clear"
-                    ? "A fresh pass."
-                    : "Worth a closer look."}
+                    ? "Scan complete"
+                    : "Scan status"}
                 </h3>
                 <p>
                   {s.wetResult?.message ||
@@ -721,13 +713,13 @@ function App() {
                     </div>
                     <h3>
                       {panel === "old"
-                        ? "Nothing forgotten here."
-                        : "Nothing to empty. Nice."}
+                        ? "No old Downloads found"
+                        : "The bin is empty"}
                     </h3>
                     <p>
                       {panel === "old"
                         ? "No old Downloads found in this round."
-                        : "Start a cleaning round and your leftovers will land here."}
+                        : "Start a scan to collect temporary files for review."}
                     </p>
                   </div>
                 ) : (
@@ -750,41 +742,23 @@ function App() {
                       >
                         {selected.size === files.length
                           ? "Deselect all"
-                          : "Select all"}
+                          : `Select all ${files.length.toLocaleString()}`}
                       </button>
                     </div>
-                    <div className="file-list">
-                      {files.map((f) => (
-                        <label key={f.id} className="file-row">
-                          <input
-                            type="checkbox"
-                            checked={selected.has(f.id)}
-                            onChange={() => choose(f.id)}
-                          />
-                          <div>
-                            <strong>{f.name}</strong>
-                            <small title={f.path}>{f.path}</small>
-                            <span>
-                              {skipped.find((item) => item.id === f.id)
-                                ?.reason ||
-                                f.recoveryProblem ||
-                                (f.compacted
-                                  ? "Compressed by Vacuum · contents kept · reversible"
-                                  : f.reason) ||
-                                f.category}
-                            </span>
-                          </div>
-                          <b>{bytes(f.size)}</b>
-                        </label>
-                      ))}
-                    </div>
+                    <FileReview
+                      key={panel}
+                      files={files}
+                      selected={selected}
+                      choose={choose}
+                      skipped={skipped}
+                      formatSize={bytes}
+                    />
                     {panel === "bin" && (
                       <div className="compaction-actions">
                         <p>
-                          Need space while keeping everything? Windows can
-                          losslessly compress selected leftovers on NTFS. Up to
-                          64 files per pass. Files stay in place; results depend
-                          on their contents.
+                          Windows can losslessly compress selected files on
+                          NTFS. Up to 64 files per pass. Files stay in place;
+                          results depend on their contents.
                         </p>
                         <div>
                           <button
