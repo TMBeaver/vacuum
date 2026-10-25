@@ -178,7 +178,11 @@ function App() {
         const settings = await api.settings(p);
         setS((v) => ({ ...v, settings }));
       } catch (error) {
-        setS((v) => ({ ...v, settings: previous }));
+        try {
+          setS(await api.get());
+        } catch {
+          setS((v) => ({ ...v, settings: previous }));
+        }
         throw error;
       }
     });
@@ -544,7 +548,16 @@ function App() {
                 <div className="setting-row">
                   <div>
                     <h3>Start with Windows</h3>
-                    <p>Wait quietly in the system tray after sign-in.</p>
+                    <p>
+                      {s.startupRegistration?.available === false
+                        ? "Windows startup status is unavailable."
+                        : s.startupRegistration?.registered &&
+                            !s.startupRegistration.enabled
+                          ? "Disabled in Windows startup settings."
+                          : s.startupRegistration?.enabled
+                            ? "Registered for your Windows account. Starts in the tray."
+                            : "Start in the system tray after sign-in."}
+                    </p>
                   </div>
                   <Toggle
                     label="Start with Windows"

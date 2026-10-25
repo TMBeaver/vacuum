@@ -1,0 +1,13 @@
+{
+  "packaged": true,
+  "logicalBytes": 8454144,
+  "compressedAllocationBeforeUndo": 1114112,
+  "allocationAfterUndo": 8454144,
+  "editsPreserved": true,
+  "undoAcrossRestart": true,
+  "recentFileRecyclingBlocked": true,
+  "originalHash": "09b4a95ebd5db984d7f885b3458efbebfba90436fb041879f53fbad9964a3a34",
+  "editedHash": "be84e11ae3de4378d3f6a659044a137f1406776d071d65e43548e2f8f74020fb",
+  "restoredHash": "be84e11ae3de4378d3f6a659044a137f1406776d071d65e43548e2f8f74020fb",
+  "permanentlyDeletedFiles": 0
+}

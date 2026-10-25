@@ -17,3 +17,7 @@ Native UI verification exercised all six physical controls, a direct raycast cli
 A read-only audit of the actual user's temporary-file roots visited 6,392 entries and found 7 eligible temporary files (1,034,610 bytes) in 0.87 seconds. It reported one unreadable location and six skipped entries. It recycled zero files. Only synthetic fixtures were recycled by integration tests.
 
 The packaged companion window had native bounds that matched the intended taskbar lane after accounting for fractional Windows DPI.
+
+## Version 0.3.0-alpha.2
+
+The suite has 69 passing tests. Production build, formatting and packaged seven-control UI checks passed. Native edited-file Undo and interrupted-compression recovery passed in both source and the packaged payload with SHA-256 and allocation verification. The new startup proof passed a current-user registration round trip in both modes; it verified full background arguments and preserved all other Run values. The source proof also launched its exact registered command from a folder containing spaces. Real OS sign-in/sign-out, reboot, suspend and long-term daily operation remain untested. Remaining quality gates are tracked in `quality-audit.md`.

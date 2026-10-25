@@ -76,6 +76,81 @@ test("compression remains reversible after restart and a new scan", async () => 
   assert.equal(result.bytesExpanded, 3072);
   assert.equal(result.bin.files[0].compacted, false);
 });
+
+test("Undo preserves later edits to the same file without waiting for its cleaning age", async () => {
+  const f = await fixture(async (entries, compress) =>
+    entries.map((entry) => success(entry, compress)),
+  );
+  const bin = await f.engine.scan();
+  await f.engine.compactBin([bin.files[0].id]);
+  const changed = "New contents written after compression. Keep this edit.";
+  await fs.writeFile(f.filename, changed);
+  const restarted = createCleaner(f.config);
+  const result = await restarted.compactBin([bin.files[0].id], false);
+  assert.equal(result.changed, 1);
+  assert.equal(result.skipped.length, 0);
+  assert.equal(result.bin.files[0].compacted, false);
+  assert.equal(await fs.readFile(f.filename, "utf8"), changed);
+  assert.equal(
+    (await restarted.emptyBin([bin.files[0].id])).trashed,
+    0,
+    "Undo must not make a recent file eligible for recycling",
+  );
+});
+
+test("Undo refuses a replacement file at the same path", async () => {
+  let calls = 0;
+  const f = await fixture(async (entries, compress) => {
+    calls++;
+    return entries.map((entry) => success(entry, compress));
+  });
+  const bin = await f.engine.scan();
+  await f.engine.compactBin([bin.files[0].id]);
+  await fs.rename(f.filename, `${f.filename}.retained-original`);
+  await fs.writeFile(f.filename, "Replacement contents");
+  const result = await f.engine.compactBin([bin.files[0].id], false);
+  assert.equal(result.changed, 0);
+  assert.equal(result.skipped.length, 1);
+  assert.equal(calls, 1);
+  assert.equal(await fs.readFile(f.filename, "utf8"), "Replacement contents");
+  assert.equal(
+    await fs.readFile(`${f.filename}.retained-original`, "utf8"),
+    "kept contents",
+  );
+});
+
+test("a new pass does not carry old allocation savings across externally edited contents", async () => {
+  let calls = 0;
+  const f = await fixture(async (entries, compress) => {
+    calls++;
+    return entries.map((entry) =>
+      calls === 1
+        ? success(entry, compress)
+        : {
+            ...success(entry, true),
+            beforeBytes: 1024,
+            afterBytes: 1024,
+            wasCompressed: true,
+          },
+    );
+  });
+  const bin = await f.engine.scan();
+  await f.engine.compactBin([bin.files[0].id]);
+  await fs.writeFile(
+    f.filename,
+    "Edited contents with a retained old timestamp.",
+  );
+  const old = new Date(Date.now() - 10 * 86400000);
+  await fs.utimes(f.filename, old, old);
+  await f.engine.scan();
+  const result = await f.engine.compactBin([bin.files[0].id]);
+  assert.equal(result.bytesSaved, 0);
+  assert.equal(result.bin.files[0].compacted, true);
+  const persisted = JSON.parse(
+    await fs.readFile(path.join(f.config.userData, "bin.json"), "utf8"),
+  );
+  assert.equal(persisted.files[0].compaction.savedBytes, 0);
+});
 test("changed files and unverified native results cannot become successful savings", async () => {
   let calls = 0;
   const f = await fixture(async (entries) => {

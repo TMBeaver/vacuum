@@ -224,7 +224,8 @@ function createCleaner({
         if (
           metadata.size !== item.record.size ||
           String(metadata.ino) !== item.record.ino ||
-          String(metadata.dev) !== item.record.dev
+          String(metadata.dev) !== item.record.dev ||
+          metadata.birthtimeMs !== item.record.birthtimeMs
         )
           throw Error(
             "File identity changed during an interrupted pass. Kept for review.",
@@ -318,7 +319,8 @@ function createCleaner({
   }
 
   function publicFile(item) {
-    const browser = roots.find((root) => root.path === item.root)?.label;
+    const root = roots.find((root) => root.path === item.root);
+    const browser = root?.label;
     return {
       id: item.id,
       path: item.path,
@@ -326,18 +328,20 @@ function createCleaner({
       size: item.size,
       mtimeMs: item.mtimeMs,
       compacted:
-        !!item.compaction?.managed && !item.compaction?.recoveryProblem,
+        item.compaction?.managed === true && !item.compaction?.recoveryProblem,
       recoveryProblem: item.compaction?.recoveryProblem,
       category: item.category,
       browser,
       reason:
-        item.category === "temporary"
-          ? "Temporary file · unchanged for over 7 days"
-          : item.category === "browser-cache"
-            ? `${browser || "Browser"} cache · unchanged for over 7 days · browser must be closed`
-            : item.category === "crash-dumps"
-              ? "Crash dump · unchanged for over 30 days"
-              : "Download · unchanged for over 180 days · selected by you",
+        Date.now() - item.mtimeMs <= root?.days * DAY
+          ? "Recently updated · kept in place · not eligible for recycling"
+          : item.category === "temporary"
+            ? "Temporary file · unchanged for over 7 days"
+            : item.category === "browser-cache"
+              ? `${browser || "Browser"} cache · unchanged for over 7 days · browser must be closed`
+              : item.category === "crash-dumps"
+                ? "Crash dump · unchanged for over 30 days"
+                : "Download · unchanged for over 180 days · selected by you",
     };
   }
 
@@ -536,7 +540,7 @@ function createCleaner({
     return { found, coverage };
   }
 
-  async function verify(item) {
+  async function verify(item, { undo = false } = {}) {
     if (!validRecord(item)) throw new Error("Invalid bin record.");
     if (
       recoveryBlocked ||
@@ -551,6 +555,19 @@ function createCleaner({
     );
     await guard(root);
     const metadata = await safeFile(item.path, root);
+    if (undo) {
+      if (item.compaction?.managed !== true)
+        throw Error("This file was not compressed by Vacuum.");
+      if (
+        String(metadata.ino) !== item.ino ||
+        String(metadata.dev) !== item.dev ||
+        metadata.birthtimeMs !== item.birthtimeMs
+      )
+        throw Error(
+          "File identity changed. Undo cannot be applied to a replacement file.",
+        );
+      return metadata;
+    }
     if (!eligible(item.path, root, metadata))
       throw new Error("File no longer matches its cleaning rule.");
     if (
@@ -565,6 +582,7 @@ function createCleaner({
         "File changed since collection. Scan again before emptying it.",
       );
     }
+    return metadata;
   }
 
   return {
@@ -593,7 +611,8 @@ function createCleaner({
                 id: file.id,
                 compaction:
                   file.ino === fresh.get(file.path).ino &&
-                  file.dev === fresh.get(file.path).dev
+                  file.dev === fresh.get(file.path).dev &&
+                  file.birthtimeMs === fresh.get(file.path).birthtimeMs
                     ? file.compaction
                     : undefined,
               }
@@ -690,10 +709,20 @@ function createCleaner({
           skipped = [];
         for (const item of records.filter((item) => selected.has(item.id))) {
           try {
-            await verify(item);
-            if (!compress && !item.compaction?.managed)
-              throw Error("This file was not compressed by Vacuum.");
-            eligibleItems.push(item);
+            const metadata = await verify(item, { undo: !compress });
+            const root = roots.find(
+              (root) =>
+                root.path === item.root && root.category === item.category,
+            );
+            eligibleItems.push(
+              compress
+                ? item
+                : {
+                    ...snapshot(item.path, root, metadata),
+                    id: item.id,
+                    compaction: item.compaction,
+                  },
+            );
           } catch (error) {
             skipped.push({ id: item.id, reason: error.message });
           }
@@ -708,9 +737,23 @@ function createCleaner({
           const prepared = preparation.find(
             (result) => result.id === record.id,
           );
-          if (validPrepared({ record, prepared, compress }))
-            preparedItems.push({ record, prepared, compress });
-          else
+          if (validPrepared({ record, prepared, compress })) {
+            const saved = record.compaction?.savedBytes;
+            const sameContents = record.compaction?.sha256 === prepared.sha256;
+            const currentRecord = record.compaction
+              ? {
+                  ...record,
+                  compaction: {
+                    ...record.compaction,
+                    savedBytes:
+                      sameContents && Number.isSafeInteger(saved) && saved >= 0
+                        ? saved
+                        : 0,
+                  },
+                }
+              : record;
+            preparedItems.push({ record: currentRecord, prepared, compress });
+          } else
             skipped.push({
               id: record.id,
               reason: prepared?.reason || "File could not be prepared safely.",
@@ -769,7 +812,8 @@ function createCleaner({
             if (
               metadata.size !== item.size ||
               String(metadata.ino) !== item.ino ||
-              String(metadata.dev) !== item.dev
+              String(metadata.dev) !== item.dev ||
+              metadata.birthtimeMs !== item.birthtimeMs
             )
               throw Error("File identity changed; kept for review.");
             const wasManaged = item.compaction?.managed === true;

@@ -1,0 +1,12 @@
+{
+  "packaged": false,
+  "nativeRegistrationRoundTrip": true,
+  "currentUserScope": true,
+  "completeBackgroundArgumentsVerified": true,
+  "spacedFolderArgumentsParsed": true,
+  "registeredBackgroundLaunchExited": true,
+  "testEntryRemoved": true,
+  "otherCurrentUserRunEntriesPreserved": true,
+  "signOutOrRebootPerformed": false,
+  "permanentlyDeletedFiles": 0
+}

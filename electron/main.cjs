@@ -21,7 +21,10 @@ const { sampleStorage, describeStorageChange } = require("./storage.cjs");
 const { compactFiles } = require("./compression.cjs");
 const { createBrowserGuard } = require("./browser-cache.cjs");
 const { createPerformance } = require("./performance.cjs");
+const { createStartup, STARTUP_NAME } = require("./startup.cjs");
 let performanceReview;
+let startupService;
+if (process.platform === "win32") app.setAppUserModelId(STARTUP_NAME);
 let quitAfterOperation = false;
 let taskbarGeometry = null;
 
@@ -70,6 +73,20 @@ const send = () => {
       w.webContents.send("vacuum:state", { ...state, settings });
   updateTray();
 };
+async function refreshStartup() {
+  if (testMode || !startupService) return;
+  try {
+    const status = await startupService.read();
+    settings.startup = status.enabled;
+    state.startupRegistration = {
+      available: true,
+      registered: status.registered,
+      enabled: status.enabled,
+    };
+  } catch {
+    state.startupRegistration = { available: false };
+  }
+}
 let configWrite = Promise.resolve();
 function saveSettings() {
   const snapshot = JSON.stringify(settings);
@@ -403,6 +420,7 @@ async function scheduleTick() {
     await startClean();
 }
 app.whenReady().then(async () => {
+  startupService = createStartup({ app });
   performanceReview = createPerformance({
     protectPids: () => [
       process.pid,
@@ -421,6 +439,7 @@ app.whenReady().then(async () => {
     )
       settings.hour = saved.hour;
   } catch {}
+  await refreshStartup();
   try {
     state = { ...state, ...JSON.parse(await fs.readFile(historyPath, "utf8")) };
   } catch {}
@@ -483,11 +502,18 @@ app.whenReady().then(async () => {
       main.hide();
     }
   });
+  main.on("focus", async () => {
+    await refreshStartup();
+    send();
+  });
   tray = new Tray(icon());
   tray.on("double-click", showMain);
   tray.on("click", showMain);
   updateTray();
-  ipcMain.handle("vacuum:get", () => ({ ...state, settings }));
+  ipcMain.handle("vacuum:get", async () => {
+    await refreshStartup();
+    return { ...state, settings };
+  });
   ipcMain.handle("vacuum:start", () => {
     startClean();
     return true;
@@ -496,34 +522,45 @@ app.whenReady().then(async () => {
     controller?.abort();
     return true;
   });
-  ipcMain.handle("vacuum:settings", async (_e, patch) => {
-    if (
-      typeof patch.theme === "string" &&
-      ["dark", "light"].includes(patch.theme)
-    )
-      settings.theme = patch.theme;
-    for (const key of ["wet", "auto", "companion", "startup"])
-      if (typeof patch[key] === "boolean") settings[key] = patch[key];
-    if (
-      typeof patch.hour === "string" &&
-      /^([01]\d|2[0-3]):[0-5]\d$/.test(patch.hour)
-    )
-      settings.hour = patch.hour;
-    if (Object.hasOwn(patch, "startup") && !testMode)
-      app.setLoginItemSettings({
-        openAtLogin: settings.startup,
-        path: process.execPath,
-        args: app.isPackaged
-          ? ["--background"]
-          : [app.getAppPath(), "--background"],
-      });
-    await saveSettings();
-    if (Object.hasOwn(patch, "companion")) {
-      if (!settings.companion) companion?.hide();
-      else if (controller) showCompanion();
-    }
-    send();
-    return settings;
+  let settingsUpdate = Promise.resolve();
+  ipcMain.handle("vacuum:settings", (_e, patch) => {
+    const next = settingsUpdate.then(async () => {
+      if (!patch || typeof patch !== "object" || Array.isArray(patch))
+        throw Error("Choose valid settings.");
+      const previous = { ...settings };
+      if (
+        typeof patch.theme === "string" &&
+        ["dark", "light"].includes(patch.theme)
+      )
+        settings.theme = patch.theme;
+      for (const key of ["wet", "auto", "companion", "startup"])
+        if (typeof patch[key] === "boolean") settings[key] = patch[key];
+      if (
+        typeof patch.hour === "string" &&
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(patch.hour)
+      )
+        settings.hour = patch.hour;
+      try {
+        if (typeof patch.startup === "boolean" && !testMode) {
+          await startupService.set(patch.startup);
+          await refreshStartup();
+        }
+        await saveSettings();
+      } catch (error) {
+        settings = previous;
+        await refreshStartup();
+        send();
+        throw error;
+      }
+      if (Object.hasOwn(patch, "companion")) {
+        if (!settings.companion) companion?.hide();
+        else if (controller) showCompanion();
+      }
+      send();
+      return settings;
+    });
+    settingsUpdate = next.catch(() => {});
+    return next;
   });
   const ids = (value) => {
     if (
