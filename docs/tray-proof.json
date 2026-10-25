@@ -1,0 +1,12 @@
+{
+  "packaged": true,
+  "leftClickRequestsTrayMenuWithoutShowingStation": true,
+  "hiddenCleaningAndRecall": true,
+  "modeChangesPersist": true,
+  "binOldPerformanceAndSettingsRoutes": true,
+  "minimizedStationRestored": true,
+  "busyActionsDisabled": true,
+  "fixtureUnchanged": true,
+  "rendererErrors": 0,
+  "permanentlyDeletedFiles": 0
+}

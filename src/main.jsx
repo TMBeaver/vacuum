@@ -220,6 +220,9 @@ function App() {
       if (result) setOld(result);
     }
   }
+  useEffect(() => {
+    if (s.panelRequest?.id) openPanel(s.panelRequest.panel);
+  }, [s.panelRequest?.id]);
   const choose = (id) =>
     setSelected((prev) => {
       const n = new Set(prev);

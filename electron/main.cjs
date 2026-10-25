@@ -22,6 +22,7 @@ const { compactFiles } = require("./compression.cjs");
 const { createBrowserGuard } = require("./browser-cache.cjs");
 const { createPerformance } = require("./performance.cjs");
 const { createStartup, STARTUP_NAME } = require("./startup.cjs");
+const { createTrayTemplate } = require("./tray-menu.cjs");
 let performanceReview;
 let startupService;
 if (process.platform === "win32") app.setAppUserModelId(STARTUP_NAME);
@@ -112,6 +113,7 @@ async function saveHistory() {
   );
 }
 function showMain() {
+  if (main?.isMinimized()) main.restore();
   main?.show();
   main?.focus();
 }
@@ -135,40 +137,82 @@ function icon() {
     }
   return nativeImage.createFromBitmap(pixels, { width: size, height: size });
 }
+let panelRequestId = 0;
+function openFromTray(panel) {
+  state.panelRequest = { id: ++panelRequestId, panel };
+  showMain();
+  send();
+}
+function changeFromTray(patch) {
+  return applySettings(patch).catch((error) => {
+    state.message = `Settings could not be saved: ${error.message}`;
+    openFromTray("settings");
+  });
+}
 function updateTray() {
   if (!tray) return;
   tray.setToolTip(
     `Vacuum · ${state.phase === "docked" ? "At the station" : state.message}`,
   );
   tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: "Open station", click: showMain },
-      {
-        label: controller ? "Return to dock" : "Start cleaning",
-        click: () => (controller ? controller.abort() : startClean()),
-      },
-      { label: `Dust bin · ${state.bin.count} files`, click: showMain },
-      { type: "separator" },
-      {
-        label: "Daily autoclean",
-        type: "checkbox",
-        checked: settings.auto,
-        click: async (item) => {
-          settings.auto = item.checked;
-          await saveSettings();
-          send();
-        },
-      },
-      {
-        label: "Quit Vacuum",
-        click: () => {
+    Menu.buildFromTemplate(
+      createTrayTemplate({
+        state,
+        settings,
+        running: !!controller,
+        start: startClean,
+        stop: () => controller?.abort(),
+        open: openFromTray,
+        change: changeFromTray,
+        quit: () => {
           quitting = true;
           app.quit();
         },
-      },
-    ]),
+      }),
+    ),
   );
 }
+let settingsUpdate = Promise.resolve();
+function applySettings(patch) {
+  const next = settingsUpdate.then(async () => {
+    if (!patch || typeof patch !== "object" || Array.isArray(patch))
+      throw Error("Choose valid settings.");
+    const previous = { ...settings };
+    if (
+      typeof patch.theme === "string" &&
+      ["dark", "light"].includes(patch.theme)
+    )
+      settings.theme = patch.theme;
+    for (const key of ["wet", "auto", "companion", "startup"])
+      if (typeof patch[key] === "boolean") settings[key] = patch[key];
+    if (
+      typeof patch.hour === "string" &&
+      /^([01]\d|2[0-3]):[0-5]\d$/.test(patch.hour)
+    )
+      settings.hour = patch.hour;
+    try {
+      if (typeof patch.startup === "boolean" && !testMode) {
+        await startupService.set(patch.startup);
+        await refreshStartup();
+      }
+      await saveSettings();
+    } catch (error) {
+      settings = previous;
+      await refreshStartup();
+      send();
+      throw error;
+    }
+    if (Object.hasOwn(patch, "companion")) {
+      if (!settings.companion) companion?.hide();
+      else if (controller) await placeCompanion(controller.signal);
+    }
+    send();
+    return settings;
+  });
+  settingsUpdate = next.catch(() => {});
+  return next;
+}
+
 function showCompanion() {
   if (!settings.companion) return;
   const display = screen.getPrimaryDisplay();
@@ -546,7 +590,7 @@ app.whenReady().then(async () => {
   });
   tray = new Tray(icon());
   tray.on("double-click", showMain);
-  tray.on("click", showMain);
+  tray.on("click", () => tray.popUpContextMenu());
   updateTray();
   ipcMain.handle("vacuum:get", async () => {
     await refreshStartup();
@@ -560,46 +604,7 @@ app.whenReady().then(async () => {
     controller?.abort();
     return true;
   });
-  let settingsUpdate = Promise.resolve();
-  ipcMain.handle("vacuum:settings", (_e, patch) => {
-    const next = settingsUpdate.then(async () => {
-      if (!patch || typeof patch !== "object" || Array.isArray(patch))
-        throw Error("Choose valid settings.");
-      const previous = { ...settings };
-      if (
-        typeof patch.theme === "string" &&
-        ["dark", "light"].includes(patch.theme)
-      )
-        settings.theme = patch.theme;
-      for (const key of ["wet", "auto", "companion", "startup"])
-        if (typeof patch[key] === "boolean") settings[key] = patch[key];
-      if (
-        typeof patch.hour === "string" &&
-        /^([01]\d|2[0-3]):[0-5]\d$/.test(patch.hour)
-      )
-        settings.hour = patch.hour;
-      try {
-        if (typeof patch.startup === "boolean" && !testMode) {
-          await startupService.set(patch.startup);
-          await refreshStartup();
-        }
-        await saveSettings();
-      } catch (error) {
-        settings = previous;
-        await refreshStartup();
-        send();
-        throw error;
-      }
-      if (Object.hasOwn(patch, "companion")) {
-        if (!settings.companion) companion?.hide();
-        else if (controller) await placeCompanion(controller.signal);
-      }
-      send();
-      return settings;
-    });
-    settingsUpdate = next.catch(() => {});
-    return next;
-  });
+  ipcMain.handle("vacuum:settings", (_e, patch) => applySettings(patch));
   const ids = (value) => {
     if (
       !Array.isArray(value) ||
