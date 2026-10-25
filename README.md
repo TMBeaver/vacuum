@@ -73,4 +73,6 @@ The UI integration test uses an isolated temporary directory and recycles **only
 
 Settings, the reference bin and the most recent round are stored under Electron's per-user application-data directory (`settings.json`, `bin.json`, `history.json`). If bin metadata is corrupt, Vacuum reports the error and refuses to clean through that manifest. Quit Vacuum, preserve a copy of `bin.json`, and rename it to start a fresh reference list; this does not touch the referenced files. Recycle Bin restoration uses Windows Explorer.
 
+Reversible compression writes a flushed recovery journal before Windows changes file allocation. After an interrupted pass, Vacuum verifies the file identity and SHA-256 before restoring its Undo state. Files that cannot be verified remain protected in the bin with a reason; a pending inspection can be retried from the bin. Recovery never modifies file contents. `node scripts/verify-compression-recovery.cjs` verifies this using an actual interrupted child process and a retained synthetic fixture.
+
 This is an unsigned initial Windows release. The source and installer are private. Bundled Geist font is licensed under the [SIL Open Font License](src/assets/Geist-LICENSE.txt); library notices are included with the app.

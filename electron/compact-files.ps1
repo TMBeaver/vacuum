@@ -26,6 +26,8 @@ foreach($entry in $request.entries){
     $hashBefore=[VacuumAllocation]::Hash($file.FullName)
     $before=[VacuumAllocation]::Bytes($file.FullName)
     $wasCompressed=($file.Attributes -band [IO.FileAttributes]::Compressed)-ne 0
+    if($request.inspect){$results+=@{id=$entry.id;ok=$true;beforeBytes=$before;compressed=$wasCompressed;verified=$true;sha256=$hashBefore};continue}
+    if($entry.expectedSha256 -ne $hashBefore -or [bool]$entry.expectedWasCompressed -ne $wasCompressed){throw 'File changed after the recovery journal was prepared.'}
     $flag=if($request.compress){'/C'}else{'/U'}
     $output=& "$env:SystemRoot\System32\compact.exe" $flag /A /Q $file.FullName 2>&1 | Out-String
     if($LASTEXITCODE -ne 0){throw 'Windows could not change file compression.'}

@@ -3,6 +3,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
+const { writeAtomicJson } = require("./atomic-json.cjs");
 
 const DAY = 24 * 60 * 60 * 1000;
 const LIMIT = 50_000;
@@ -32,6 +33,7 @@ function createCleaner({
     throw new TypeError("userData and trashItem are required.");
   const storage = path.resolve(userData);
   const manifestPath = path.join(storage, "bin.json");
+  const journalPath = path.join(storage, "compression-journal.json");
   const roots = [
     tempRoot && {
       path: path.resolve(tempRoot),
@@ -53,6 +55,9 @@ function createCleaner({
   let candidates = new Map();
   let queue = Promise.resolve();
   let closed = false;
+  let recovery = { recovered: 0, needsReview: 0, pending: false };
+  let pendingRecords = new Set();
+  let recoveryBlocked = false;
 
   const ready = (async () => {
     await fs.mkdir(storage, { recursive: true });
@@ -65,6 +70,7 @@ function createCleaner({
       if (error.code !== "ENOENT")
         throw new Error(`Could not read Vacuum's bin: ${error.message}`);
     }
+    await recoverCompression();
   })();
 
   function validRecord(item) {
@@ -101,18 +107,181 @@ function createCleaner({
   }
 
   async function save(next) {
-    const temporary = `${manifestPath}.${randomUUID()}.tmp`;
+    await writeAtomicJson(manifestPath, { version: 1, files: next });
+    records = next;
+  }
+
+  function validPrepared(item) {
+    return (
+      item &&
+      validRecord(item.record) &&
+      item.prepared?.ok === true &&
+      item.prepared.verified === true &&
+      typeof item.prepared.compressed === "boolean" &&
+      Number.isSafeInteger(item.prepared.beforeBytes) &&
+      item.prepared.beforeBytes >= 0 &&
+      /^[a-f0-9]{64}$/.test(item.prepared.sha256) &&
+      typeof item.compress === "boolean"
+    );
+  }
+  async function archiveJournal() {
+    await fs.rename(
+      journalPath,
+      path.join(storage, "compression-journal.last.json"),
+    );
+    pendingRecords.clear();
+  }
+  async function recoverCompression() {
+    let journal;
     try {
-      await fs.writeFile(
-        temporary,
-        JSON.stringify({ version: 1, files: next }, null, 2),
-        { mode: 0o600, flag: "wx" },
-      );
-      await fs.rename(temporary, manifestPath);
-      records = next;
-    } finally {
-      await fs.rm(temporary, { force: true }).catch(() => {});
+      journal = JSON.parse(await fs.readFile(journalPath, "utf8"));
+    } catch (error) {
+      if (error.code === "ENOENT") return recovery;
+      recoveryBlocked = true;
+      return (recovery = {
+        recovered: 0,
+        needsReview: 1,
+        pending: true,
+        error:
+          "Compression recovery journal could not be read. Files are protected until metadata is reviewed.",
+      });
     }
+    if (
+      !journal ||
+      journal.version !== 1 ||
+      !Array.isArray(journal.items) ||
+      journal.items.length > 64 ||
+      !journal.items.every(validPrepared)
+    ) {
+      recoveryBlocked = true;
+      return (recovery = {
+        recovered: 0,
+        needsReview: 1,
+        pending: true,
+        error:
+          "Compression recovery journal is invalid. No file was changed by recovery.",
+      });
+    }
+    pendingRecords = new Set(journal.items.map((item) => item.record.id));
+    if (typeof compactFiles?.inspect !== "function") {
+      recoveryBlocked = true;
+      return (recovery = {
+        recovered: 0,
+        needsReview: journal.items.length,
+        pending: true,
+        error: "Windows compression inspection is unavailable.",
+      });
+    }
+    const safe = [],
+      problems = [];
+    const next = [...records];
+    for (const item of journal.items) {
+      const existing = records.find(
+        (record) =>
+          record.id === item.record.id && record.path === item.record.path,
+      );
+      if (!existing) continue;
+      try {
+        const root = roots.find(
+            (root) =>
+              root.path === item.record.root &&
+              root.category === item.record.category,
+          ),
+          metadata = await safeFile(item.record.path, root);
+        if (
+          metadata.size !== item.record.size ||
+          String(metadata.ino) !== item.record.ino ||
+          String(metadata.dev) !== item.record.dev
+        )
+          throw Error(
+            "File identity changed during an interrupted pass. Kept for review.",
+          );
+        safe.push({
+          ...item,
+          current: {
+            ...snapshot(item.record.path, root, metadata),
+            id: item.record.id,
+          },
+        });
+      } catch (error) {
+        problems.push({ id: item.record.id, reason: error.message });
+      }
+    }
+    let inspected = [];
+    try {
+      if (safe.length)
+        inspected = await compactFiles.inspect(
+          safe.map((item) => item.current),
+        );
+    } catch (error) {
+      recoveryBlocked = true;
+      return (recovery = {
+        recovered: 0,
+        needsReview: safe.length,
+        pending: true,
+        error: `Recovery inspection failed: ${error.message}`,
+      });
+    }
+    let recovered = 0;
+    for (const item of safe) {
+      const current = inspected.find((result) => result.id === item.record.id);
+      if (
+        !current?.ok ||
+        current.verified !== true ||
+        current.sha256 !== item.prepared.sha256 ||
+        !Number.isSafeInteger(current.beforeBytes) ||
+        current.beforeBytes < 0 ||
+        typeof current.compressed !== "boolean"
+      ) {
+        problems.push({
+          id: item.record.id,
+          reason:
+            current?.reason ||
+            "Contents could not be verified after interruption. Kept for review.",
+        });
+        continue;
+      }
+      const originalBaseline =
+        item.prepared.beforeBytes +
+        (item.record.compaction?.managed
+          ? item.record.compaction.savedBytes || 0
+          : 0);
+      const managed =
+        current.compressed &&
+        (item.record.compaction?.managed ||
+          (!item.prepared.compressed && item.compress));
+      next[next.findIndex((record) => record.id === item.record.id)] = {
+        ...item.current,
+        compaction: {
+          managed: !!managed,
+          savedBytes: managed
+            ? Math.max(0, originalBaseline - current.beforeBytes)
+            : 0,
+          sha256: current.sha256,
+        },
+      };
+      recovered++;
+    }
+    for (const problem of problems) {
+      const index = next.findIndex((record) => record.id === problem.id);
+      if (index >= 0)
+        next[index] = {
+          ...next[index],
+          compaction: {
+            ...next[index].compaction,
+            recoveryProblem: problem.reason,
+          },
+        };
+    }
+    await save(next);
+    await archiveJournal();
+    recoveryBlocked = false;
+    return (recovery = {
+      recovered,
+      needsReview: problems.length,
+      pending: false,
+      problems,
+    });
   }
 
   function publicFile(item) {
@@ -122,7 +291,9 @@ function createCleaner({
       name: path.basename(item.path),
       size: item.size,
       mtimeMs: item.mtimeMs,
-      compacted: !!item.compaction?.managed,
+      compacted:
+        !!item.compaction?.managed && !item.compaction?.recoveryProblem,
+      recoveryProblem: item.compaction?.recoveryProblem,
       category: item.category,
       reason:
         item.category === "temporary"
@@ -304,6 +475,14 @@ function createCleaner({
 
   async function verify(item) {
     if (!validRecord(item)) throw new Error("Invalid bin record.");
+    if (
+      recoveryBlocked ||
+      pendingRecords.has(item.id) ||
+      item.compaction?.recoveryProblem
+    )
+      throw Error(
+        "An interrupted compression pass needs verification. Files are kept in place.",
+      );
     const root = roots.find(
       (root) => root.path === item.root && root.category === item.category,
     );
@@ -326,6 +505,12 @@ function createCleaner({
 
   return {
     getBin: () => run(() => bin()),
+    getRecovery: () => run(() => recovery),
+    recoverCompaction: () =>
+      run(async () => {
+        await recoverCompression();
+        return { ...bin(), recovery };
+      }),
     scan: ({ signal } = {}) =>
       run(async () => {
         const { found, coverage } = await walk(
@@ -422,6 +607,10 @@ function createCleaner({
       }),
     compactBin: (ids, compress = true) =>
       run(async () => {
+        if (pendingRecords.size || recoveryBlocked) {
+          await recoverCompression();
+          if (recoveryBlocked) throw Error(recovery.error);
+        }
         if (!compactFiles)
           throw Error("Reversible compression is unavailable.");
         if (
@@ -443,16 +632,55 @@ function createCleaner({
             skipped.push({ id: item.id, reason: error.message });
           }
         }
-        const results = eligibleItems.length
-          ? await compactFiles(eligibleItems, compress)
+        if (eligibleItems.length && typeof compactFiles.inspect !== "function")
+          throw Error("Safe compression inspection is unavailable.");
+        const preparation = eligibleItems.length
+          ? await compactFiles.inspect(eligibleItems)
+          : [];
+        const preparedItems = [];
+        for (const record of eligibleItems) {
+          const prepared = preparation.find(
+            (result) => result.id === record.id,
+          );
+          if (validPrepared({ record, prepared, compress }))
+            preparedItems.push({ record, prepared, compress });
+          else
+            skipped.push({
+              id: record.id,
+              reason: prepared?.reason || "File could not be prepared safely.",
+            });
+        }
+        if (preparedItems.length) {
+          await writeAtomicJson(journalPath, {
+            version: 1,
+            time: new Date().toISOString(),
+            items: preparedItems,
+          });
+          pendingRecords = new Set(preparedItems.map((item) => item.record.id));
+          recovery = { recovered: 0, needsReview: 0, pending: true };
+        }
+        const results = preparedItems.length
+          ? await compactFiles(
+              preparedItems.map(({ record, prepared }) => ({
+                ...record,
+                expectedSha256: prepared.sha256,
+                expectedWasCompressed: prepared.compressed,
+              })),
+              compress,
+            )
           : [];
         let changed = 0,
           bytesSaved = 0,
           bytesExpanded = 0;
         const next = [...records];
-        for (const item of eligibleItems) {
+        for (const { record: item } of preparedItems) {
           const result = results.find((result) => result.id === item.id);
+          const planned = preparedItems.find(
+            (plan) => plan.record.id === item.id,
+          );
           if (
+            !planned ||
+            result?.sha256 !== planned.prepared.sha256 ||
             !result?.ok ||
             result.verified !== true ||
             !Number.isSafeInteger(result.beforeBytes) ||
@@ -506,6 +734,18 @@ function createCleaner({
           }
         }
         await save(next);
+        if (preparedItems.length) {
+          if (
+            skipped.some((problem) =>
+              preparedItems.some((plan) => plan.record.id === problem.id),
+            )
+          )
+            await recoverCompression();
+          else {
+            await archiveJournal();
+            recovery = { recovered: 0, needsReview: 0, pending: false };
+          }
+        }
         return {
           changed,
           bytesSaved,

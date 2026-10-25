@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld(
     recycleBin: () => ipcRenderer.invoke("vacuum:recycle-bin"),
     compact: (ids, compress = true) =>
       ipcRenderer.invoke("vacuum:compact", ids, compress),
+    recoverCompression: () => ipcRenderer.invoke("vacuum:recover-compression"),
     window: (action) => ipcRenderer.invoke("vacuum:window", action),
     subscribe: (callback) => {
       const fn = (_e, s) => callback(s);

@@ -1,7 +1,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { execFile } = require("node:child_process");
-async function compactFiles(entries, compress) {
+async function invokeCompression(entries, compress, inspect = false) {
   if (!Array.isArray(entries) || entries.length > 64)
     throw Error("Select up to 64 files for a reversible space-saving pass.");
   const script = await fs.readFile(
@@ -38,15 +38,30 @@ async function compactFiles(entries, compress) {
     );
     child.stdin.end(
       JSON.stringify({
-        entries: entries.map(({ id, path, size, mtimeMs }) => ({
-          id,
-          path,
-          size,
-          mtimeMs,
-        })),
+        entries: entries.map(
+          ({
+            id,
+            path,
+            size,
+            mtimeMs,
+            expectedSha256,
+            expectedWasCompressed,
+          }) => ({
+            id,
+            path,
+            size,
+            mtimeMs,
+            expectedSha256,
+            expectedWasCompressed,
+          }),
+        ),
         compress,
+        inspect,
       }),
     );
   });
 }
+const compactFiles = (entries, compress) =>
+  invokeCompression(entries, compress);
+compactFiles.inspect = (entries) => invokeCompression(entries, false, true);
 module.exports = { compactFiles };

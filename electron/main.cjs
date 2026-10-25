@@ -344,6 +344,7 @@ async function startClean() {
     send();
     const result = await cleaner.scan({ signal: active.signal });
     state.bin = await cleaner.getBin();
+    state.recovery = await cleaner.getRecovery();
     state.coverage = result.coverage;
     state.progress = {
       visited: result.coverage.visited,
@@ -437,6 +438,7 @@ app.whenReady().then(async () => {
   });
   try {
     state.bin = await cleaner.getBin();
+    state.recovery = await cleaner.getRecovery();
   } catch (e) {
     state.message = e.message;
     state.startupError = e.message;
@@ -550,6 +552,7 @@ app.whenReady().then(async () => {
       return result;
     } finally {
       state.phase = "docked";
+      state.recovery = await cleaner.getRecovery();
       send();
     }
   });
@@ -592,11 +595,30 @@ app.whenReady().then(async () => {
       return result;
     } finally {
       state.phase = "docked";
+      state.bin = await cleaner.getBin();
+      state.recovery = await cleaner.getRecovery();
       send();
       if (quitAfterOperation) app.quit();
     }
   });
   ipcMain.handle("vacuum:old", () => cleaner.reviewOldFiles());
+  ipcMain.handle("vacuum:recover-compression", async () => {
+    if (controller || state.phase !== "docked")
+      throw Error("Return to the dock before verifying an interrupted pass.");
+    state.phase = "compacting";
+    state.message =
+      "Verifying the interrupted pass without changing file contents.";
+    send();
+    try {
+      const result = await cleaner.recoverCompaction();
+      state.bin = await cleaner.getBin();
+      state.recovery = result.recovery;
+      return result;
+    } finally {
+      state.phase = "docked";
+      send();
+    }
+  });
   ipcMain.handle("vacuum:collect", async (_e, selection) => {
     if (controller || state.phase !== "docked")
       throw new Error("Return to dock first.");

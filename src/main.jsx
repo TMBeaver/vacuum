@@ -630,6 +630,34 @@ function App() {
                     ? "Downloads untouched for at least 180 days. Age is a hint, never a reason to delete. Choose only what you no longer need."
                     : "Collected means set aside in this list. Your files stay where they are until you empty the bin."}
                 </p>
+                {panel === "bin" &&
+                  (s.recovery?.pending ||
+                    s.recovery?.recovered > 0 ||
+                    s.recovery?.needsReview > 0) && (
+                    <div
+                      className="recycling-receipt recovery-receipt"
+                      role="status"
+                    >
+                      <strong>
+                        {s.recovery.pending
+                          ? "Interrupted pass needs verification"
+                          : "Interrupted pass checked"}
+                      </strong>
+                      <p>
+                        {s.recovery.error ||
+                          `${s.recovery.recovered} ${s.recovery.recovered === 1 ? "file" : "files"} verified. ${s.recovery.needsReview ? `${s.recovery.needsReview} ${s.recovery.needsReview === 1 ? "file is" : "files are"} protected for review.` : "File contents remain in place."}`}
+                      </p>
+                      {s.recovery.pending && (
+                        <button
+                          className="outline-button"
+                          disabled={working || busy}
+                          onClick={() => run(() => api.recoverCompression())}
+                        >
+                          Verify interrupted pass
+                        </button>
+                      )}
+                    </div>
+                  )}
                 {panel === "bin" && s.lastEmpty && (
                   <div className="recycling-receipt" role="status">
                     <strong>
@@ -739,6 +767,7 @@ function App() {
                             <span>
                               {skipped.find((item) => item.id === f.id)
                                 ?.reason ||
+                                f.recoveryProblem ||
                                 (f.compacted
                                   ? "Compressed by Vacuum · contents kept · reversible"
                                   : f.reason) ||
