@@ -18,7 +18,7 @@ test("circle turns have continuous position and heading with no abrupt reversal"
   const { companionPose } = await import("../src/companion-path.mjs");
   const w = 280,
     h = 42,
-    turn = h * 0.11,
+    turn = h * 0.16,
     line = w - 18 - turn - 42,
     arc = Math.PI * turn,
     total = 2 * line + 2 * arc;
@@ -35,7 +35,7 @@ test("the complete lap returns to the same pose and tangent", async () => {
   const { companionPose } = await import("../src/companion-path.mjs");
   const w = 280,
     h = 42,
-    turn = h * 0.11,
+    turn = h * 0.16,
     total = 2 * (w - 18 - turn - 42) + 2 * Math.PI * turn;
   const a = companionPose(w, h, 0),
     b = companionPose(w, h, total);

@@ -1,5 +1,5 @@
 export function companionPose(w, h, d) {
-  const turn = Math.max(3, h * 0.11),
+  const turn = Math.max(3, h * 0.16),
     left = 42,
     right = w - 18 - turn,
     cy = h * 0.5,

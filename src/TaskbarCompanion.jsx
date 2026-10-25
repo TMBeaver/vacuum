@@ -42,7 +42,7 @@ export default function TaskbarCompanion({ theme, phase }) {
         wet = s.phase === "wet";
       if (working && !wasWorking) distance = -36;
       wasWorking = working;
-      if (working && !reduced) distance += dt * 36;
+      if (working && !reduced) distance += dt * 32;
       const p =
         working && !reduced
           ? companionPose(w, h, distance)
@@ -157,6 +157,8 @@ export default function TaskbarCompanion({ theme, phase }) {
           : "docked";
       el.dataset.trail = wet ? "water" : working ? "dust" : "none";
       el.dataset.offset = x.toFixed(2);
+      el.dataset.offsetY = y.toFixed(2);
+      el.dataset.heading = heading.toFixed(3);
     };
     frame = requestAnimationFrame(draw);
     return () => {
