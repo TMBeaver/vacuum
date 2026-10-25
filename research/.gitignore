@@ -1,0 +1,5 @@
+*
+!.gitignore
+!findings.md
+!evidence-summary.json
+!reproduce.ps1

@@ -1,0 +1,490 @@
+{
+  "format": "Selected portable excerpt; canonical raw envelopes retained locally and gitignored",
+  "tool": "REA CLI 6.4.0",
+  "date": "2026-10-25",
+  "executed_targets": false,
+  "core": {
+    "evidence_id": "ev_d2eb167ded30720a99f0fc65381ec5dfda7246f2b7dbd6eae5584ba458d2ac29",
+    "sha256": "835825a77408e19a118164172cb04f0e73dd9745d7de1e4f286bc8679c9ad4cb",
+    "mvid": "6e50abda-a38c-43ca-8083-980108dca907",
+    "coverage": {
+      "state": "partial",
+      "issues": []
+    },
+    "limitations": [
+      "Metadata tokens are build-local coordinates and are only meaningful with the reported artifact SHA-256 and MVID.",
+      "CIL instruction anchors are decoded from file-backed method bodies only; no target assembly is loaded or executed.",
+      "Signatures are decoded for common ECMA-335 primitive, class, valuetype, pointer, byref, array, and generic variable forms; unsupported forms retain raw signature hashes."
+    ]
+  },
+  "classic": {
+    "evidence_id": "ev_85f30a11515d244fb70a1e5d3b82e420fbda8c661252e791b2feba22272ab097",
+    "sha256": "b23ad493012a37998f600f4adedd8dfed1858b1030bb46d32394b37c01a2a150",
+    "mvid": "5121534c-63af-466b-a90b-98b4c88e6f1f",
+    "coverage": {
+      "state": "partial",
+      "issues": []
+    },
+    "methods": [
+      {
+        "token": "0x0600007b",
+        "declaring_type": "FluentCleaner.Services.CleaningService",
+        "name": "Analyze",
+        "rva": 12756,
+        "file_offset": 5076,
+        "il_sha256": "24d56952a2c0e4ff935710f7eee7bb855c42e4cdd2f6096780c890b5c8bbbf7c",
+        "instruction_count": 119,
+        "truncated_instructions": 0
+      },
+      {
+        "token": "0x0600007f",
+        "declaring_type": "FluentCleaner.Services.CleaningService",
+        "name": "Clean",
+        "rva": 13288,
+        "file_offset": 5608,
+        "il_sha256": "528ef3610004ba48cb00eaa33f7714da9abf823ed817803dfbb17c16b6a99a06",
+        "instruction_count": 191,
+        "truncated_instructions": 0
+      },
+      {
+        "token": "0x0600008a",
+        "declaring_type": "FluentCleaner.Services.CleaningService",
+        "name": "TryGetDeletableSize",
+        "rva": 15816,
+        "file_offset": 8136,
+        "il_sha256": "ced82bbf5d40650b24f6e2c5287c4f514c8ed223cdf86bbf1985a4765dc44ddc",
+        "instruction_count": 34,
+        "truncated_instructions": 0
+      },
+      {
+        "token": "0x0600008b",
+        "declaring_type": "FluentCleaner.Services.CleaningService",
+        "name": "IsExcluded",
+        "rva": 15928,
+        "file_offset": 8248,
+        "il_sha256": "ed778eafae847a163747d8d0ef5963e8994bf490e7047cf98ddeb6c36f3638ac",
+        "instruction_count": 26,
+        "truncated_instructions": 0
+      },
+      {
+        "token": "0x0600008d",
+        "declaring_type": "FluentCleaner.Services.CleaningService",
+        "name": "IsProtected",
+        "rva": 16024,
+        "file_offset": 8344,
+        "il_sha256": "228d4ed241d99c7eb71d173c39425eb7ea64a8509c01f630fd785ec38d0123da",
+        "instruction_count": 11,
+        "truncated_instructions": 0
+      },
+      {
+        "token": "0x060001a9",
+        "declaring_type": "FluentCleaner.Classic.Services.CleanGuardService",
+        "name": "ConfirmCleanGuards",
+        "rva": 77584,
+        "file_offset": 69904,
+        "il_sha256": "1ea144d047b0c02d44303bf36e301efb500d8bc39cc0b1eb9cae16b2d3ce0af0",
+        "instruction_count": 16,
+        "truncated_instructions": 0
+      },
+      {
+        "token": "0x06000207",
+        "declaring_type": "FluentCleaner.Classic.Services.TaskSchedulerService",
+        "name": "CreateOrUpdate",
+        "rva": 86720,
+        "file_offset": 79040,
+        "il_sha256": "75d215a84d50b7cc8d39d46bed5314d9dd33cb5928d24821c5b45d0e42c4ea9e",
+        "instruction_count": 98,
+        "truncated_instructions": 0
+      },
+      {
+        "token": "0x06000248",
+        "declaring_type": "<EnumerateFilesSafe>d__5",
+        "name": "MoveNext",
+        "rva": 91300,
+        "file_offset": 83620,
+        "il_sha256": "47fd8a2ebaa850327cf72652d4b6d8307552f4ed019c5a6eb3bfec43bb0609f3",
+        "instruction_count": 228,
+        "truncated_instructions": 0
+      },
+      {
+        "token": "0x06000253",
+        "declaring_type": "<FindFiles>d__4",
+        "name": "MoveNext",
+        "rva": 92436,
+        "file_offset": 84756,
+        "il_sha256": "7c12a644d49787d58083ee9ab7664bab10cf8bdfad310db8c9a0fdedf79085e6",
+        "instruction_count": 156,
+        "truncated_instructions": 0
+      }
+    ],
+    "call_edges": [
+      {
+        "caller_token": "0x0600007b",
+        "caller": "FluentCleaner.Services.CleaningService.Analyze",
+        "opcode": "call",
+        "target_token": "0x06000083",
+        "target_name": "BuildFileExclusions"
+      },
+      {
+        "caller_token": "0x0600007b",
+        "caller": "FluentCleaner.Services.CleaningService.Analyze",
+        "opcode": "call",
+        "target_token": "0x06000085",
+        "target_name": "BuildRegistryExclusions"
+      },
+      {
+        "caller_token": "0x0600007b",
+        "caller": "FluentCleaner.Services.CleaningService.Analyze",
+        "opcode": "newobj",
+        "target_token": "0x06000229",
+        "target_name": ".ctor"
+      },
+      {
+        "caller_token": "0x0600007b",
+        "caller": "FluentCleaner.Services.CleaningService.Analyze",
+        "opcode": "call",
+        "target_token": "0x0600007c",
+        "target_name": "FindFiles"
+      },
+      {
+        "caller_token": "0x0600007b",
+        "caller": "FluentCleaner.Services.CleaningService.Analyze",
+        "opcode": "call",
+        "target_token": "0x0600008a",
+        "target_name": "TryGetDeletableSize"
+      },
+      {
+        "caller_token": "0x0600007b",
+        "caller": "FluentCleaner.Services.CleaningService.Analyze",
+        "opcode": "call",
+        "target_token": "0x0600007e",
+        "target_name": "FindRegistryItems"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x06000085",
+        "target_name": "BuildRegistryExclusions"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x06000031",
+        "target_name": "get_Instance"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "callvirt",
+        "target_token": "0x06000048",
+        "target_name": "get_CookieDomainsToKeep"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060001af",
+        "target_name": "TryCleanProtectedStore"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060002df",
+        "target_name": "get_Handled"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060002e0",
+        "target_name": "get_Succeeded"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060002e1",
+        "target_name": "get_CookiesRemoved"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060002e2",
+        "target_name": "get_BytesFreed"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060002e1",
+        "target_name": "get_CookiesRemoved"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060002e1",
+        "target_name": "get_CookiesRemoved"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060001e4",
+        "target_name": "Format"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060001e4",
+        "target_name": "Format"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x06000080",
+        "target_name": "DeleteRegistryItem"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x060001e4",
+        "target_name": "Format"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "ldftn",
+        "target_token": "0x06000230",
+        "target_name": "<Clean>b__7_0"
+      },
+      {
+        "caller_token": "0x0600007f",
+        "caller": "FluentCleaner.Services.CleaningService.Clean",
+        "opcode": "call",
+        "target_token": "0x06000082",
+        "target_name": "TryPruneEmptyDirs"
+      },
+      {
+        "caller_token": "0x0600008a",
+        "caller": "FluentCleaner.Services.CleaningService.TryGetDeletableSize",
+        "opcode": "call",
+        "target_token": "0x0600008f",
+        "target_name": "CreateFileW"
+      },
+      {
+        "caller_token": "0x0600008b",
+        "caller": "FluentCleaner.Services.CleaningService.IsExcluded",
+        "opcode": "call",
+        "target_token": "0x06000227",
+        "target_name": "Matches"
+      },
+      {
+        "caller_token": "0x0600008d",
+        "caller": "FluentCleaner.Services.CleaningService.IsProtected",
+        "opcode": "newobj",
+        "target_token": "0x0600023c",
+        "target_name": ".ctor"
+      },
+      {
+        "caller_token": "0x0600008d",
+        "caller": "FluentCleaner.Services.CleaningService.IsProtected",
+        "opcode": "ldftn",
+        "target_token": "0x0600023d",
+        "target_name": "<IsProtected>b__0"
+      },
+      {
+        "caller_token": "0x060001a9",
+        "caller": "FluentCleaner.Classic.Services.CleanGuardService.ConfirmCleanGuards",
+        "opcode": "call",
+        "target_token": "0x060001aa",
+        "target_name": "ConfirmRunningBrowsers"
+      },
+      {
+        "caller_token": "0x060001a9",
+        "caller": "FluentCleaner.Classic.Services.CleanGuardService.ConfirmCleanGuards",
+        "opcode": "call",
+        "target_token": "0x060001ab",
+        "target_name": "ConfirmWarnings"
+      },
+      {
+        "caller_token": "0x06000207",
+        "caller": "FluentCleaner.Classic.Services.TaskSchedulerService.CreateOrUpdate",
+        "opcode": "call",
+        "target_token": "0x060001e3",
+        "target_name": "Get"
+      },
+      {
+        "caller_token": "0x06000207",
+        "caller": "FluentCleaner.Classic.Services.TaskSchedulerService.CreateOrUpdate",
+        "opcode": "call",
+        "target_token": "0x06000209",
+        "target_name": "Run"
+      },
+      {
+        "caller_token": "0x06000207",
+        "caller": "FluentCleaner.Classic.Services.TaskSchedulerService.CreateOrUpdate",
+        "opcode": "call",
+        "target_token": "0x060001e3",
+        "target_name": "Get"
+      },
+      {
+        "caller_token": "0x06000207",
+        "caller": "FluentCleaner.Classic.Services.TaskSchedulerService.CreateOrUpdate",
+        "opcode": "call",
+        "target_token": "0x060001e3",
+        "target_name": "Get"
+      },
+      {
+        "caller_token": "0x06000248",
+        "caller": "<EnumerateFilesSafe>d__5.MoveNext",
+        "opcode": "newobj",
+        "target_token": "0x06000240",
+        "target_name": ".ctor"
+      },
+      {
+        "caller_token": "0x06000248",
+        "caller": "<EnumerateFilesSafe>d__5.MoveNext",
+        "opcode": "ldftn",
+        "target_token": "0x06000241",
+        "target_name": "<EnumerateFilesSafe>b__0"
+      },
+      {
+        "caller_token": "0x06000248",
+        "caller": "<EnumerateFilesSafe>d__5.MoveNext",
+        "opcode": "call",
+        "target_token": "0x06000249",
+        "target_name": "<>m__Finally1"
+      },
+      {
+        "caller_token": "0x06000248",
+        "caller": "<EnumerateFilesSafe>d__5.MoveNext",
+        "opcode": "ldftn",
+        "target_token": "0x0600022f",
+        "target_name": "<EnumerateFilesSafe>b__5_1"
+      },
+      {
+        "caller_token": "0x06000248",
+        "caller": "<EnumerateFilesSafe>d__5.MoveNext",
+        "opcode": "call",
+        "target_token": "0x0600007d",
+        "target_name": "EnumerateFilesSafe"
+      },
+      {
+        "caller_token": "0x06000248",
+        "caller": "<EnumerateFilesSafe>d__5.MoveNext",
+        "opcode": "call",
+        "target_token": "0x0600024b",
+        "target_name": "<>m__Finally3"
+      },
+      {
+        "caller_token": "0x06000248",
+        "caller": "<EnumerateFilesSafe>d__5.MoveNext",
+        "opcode": "call",
+        "target_token": "0x0600024a",
+        "target_name": "<>m__Finally2"
+      },
+      {
+        "caller_token": "0x06000248",
+        "caller": "<EnumerateFilesSafe>d__5.MoveNext",
+        "opcode": "call",
+        "target_token": "0x06000247",
+        "target_name": "System.IDisposable.Dispose"
+      },
+      {
+        "caller_token": "0x06000253",
+        "caller": "<FindFiles>d__4.MoveNext",
+        "opcode": "ldftn",
+        "target_token": "0x0600022d",
+        "target_name": "<FindFiles>b__4_0"
+      },
+      {
+        "caller_token": "0x06000253",
+        "caller": "<FindFiles>d__4.MoveNext",
+        "opcode": "ldftn",
+        "target_token": "0x0600022e",
+        "target_name": "<FindFiles>b__4_1"
+      },
+      {
+        "caller_token": "0x06000253",
+        "caller": "<FindFiles>d__4.MoveNext",
+        "opcode": "call",
+        "target_token": "0x0600007d",
+        "target_name": "EnumerateFilesSafe"
+      },
+      {
+        "caller_token": "0x06000253",
+        "caller": "<FindFiles>d__4.MoveNext",
+        "opcode": "call",
+        "target_token": "0x0600008b",
+        "target_name": "IsExcluded"
+      },
+      {
+        "caller_token": "0x06000253",
+        "caller": "<FindFiles>d__4.MoveNext",
+        "opcode": "call",
+        "target_token": "0x0600008d",
+        "target_name": "IsProtected"
+      },
+      {
+        "caller_token": "0x06000253",
+        "caller": "<FindFiles>d__4.MoveNext",
+        "opcode": "call",
+        "target_token": "0x06000255",
+        "target_name": "<>m__Finally2"
+      },
+      {
+        "caller_token": "0x06000253",
+        "caller": "<FindFiles>d__4.MoveNext",
+        "opcode": "call",
+        "target_token": "0x06000254",
+        "target_name": "<>m__Finally1"
+      },
+      {
+        "caller_token": "0x06000253",
+        "caller": "<FindFiles>d__4.MoveNext",
+        "opcode": "call",
+        "target_token": "0x06000252",
+        "target_name": "System.IDisposable.Dispose"
+      }
+    ],
+    "limitations": [
+      "Metadata tokens are build-local coordinates and are only meaningful with the reported artifact SHA-256 and MVID.",
+      "CIL instruction anchors are decoded from file-backed method bodies only; no target assembly is loaded or executed.",
+      "Signatures are decoded for common ECMA-335 primitive, class, valuetype, pointer, byref, array, and generic variable forms; unsupported forms retain raw signature hashes."
+    ]
+  },
+  "bleachbit": {
+    "evidence_id": "ev_d80c871f036b3cecbcd0735acbb0c2738de56d43a4ed4d425e94a96da21ccc96",
+    "sha256": "285a53c01f95cf859250c1b612f27c2ff1247c5af53eb8e8c6744b374f1ed19e",
+    "observations": [
+      {
+        "observation_id": "aio_3fa7c4bae296c4a864c08802ed0f615ee88527b7b0b2a4ccc08989eec42d825b",
+        "kind": "root-manifest",
+        "subject": "art_d84a9587f84c5296fc3c9b865711d4343d30a5e1a37ed59ff5919a6fe9b367c8",
+        "value": {
+          "manifest_id": "agm_ca09465101ffb13a1b7d2d45cfd224b8483d1254b1932421e9979072541cb848",
+          "root_artifact_id": "art_d84a9587f84c5296fc3c9b865711d4343d30a5e1a37ed59ff5919a6fe9b367c8",
+          "root_sha256": "285a53c01f95cf859250c1b612f27c2ff1247c5af53eb8e8c6744b374f1ed19e",
+          "root_format": "zip",
+          "graph_sha256": "eed87b7c6c31caeb8443904eab3076491863add5fa370cd1dc6f14b742fb7b1c",
+          "node_count": 536,
+          "occurrence_count": 536,
+          "edge_count": 535
+        },
+        "evidence_id": "ev_ec27463e395baf2868b97c378ec7562e84bf2d61fe54553ed2727df4922a4958"
+      }
+    ],
+    "limitations": [
+      "Inspection derives bounded static hypotheses and next probes; it does not execute the artifact or claim format-specific semantics.",
+      "ZIP inventory lists central-directory entries only. Bytes after the central directory, including an APK Signing Block or a ZIP comment, are not occurrences."
+    ]
+  }
+}

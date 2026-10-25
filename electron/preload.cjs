@@ -1,0 +1,25 @@
+const { contextBridge, ipcRenderer } = require("electron");
+contextBridge.exposeInMainWorld(
+  "vacuum",
+  Object.freeze({
+    get: () => ipcRenderer.invoke("vacuum:get"),
+    start: () => ipcRenderer.invoke("vacuum:start"),
+    stop: () => ipcRenderer.invoke("vacuum:stop"),
+    settings: (p) => ipcRenderer.invoke("vacuum:settings", p),
+    empty: (ids) => ipcRenderer.invoke("vacuum:empty", ids),
+    release: (ids) => ipcRenderer.invoke("vacuum:release", ids),
+    old: () => ipcRenderer.invoke("vacuum:old"),
+    collect: (ids) => ipcRenderer.invoke("vacuum:collect", ids),
+    security: () => ipcRenderer.invoke("vacuum:security"),
+    window: (action) => ipcRenderer.invoke("vacuum:window", action),
+    subscribe: (callback) => {
+      const fn = (_e, s) => callback(s);
+      ipcRenderer.on("vacuum:state", fn);
+      return () => ipcRenderer.removeListener("vacuum:state", fn);
+    },
+    onDock: (callback) => {
+      ipcRenderer.on("vacuum:dock", callback);
+      return () => ipcRenderer.removeListener("vacuum:dock", callback);
+    },
+  }),
+);

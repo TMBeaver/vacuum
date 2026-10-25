@@ -1,0 +1,9 @@
+node_modules/
+dist/
+release/
+research/artifacts/
+research/downloads/
+*.log
+.env*
+test-results/
+research/raw/
