@@ -4,6 +4,10 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { writeAtomicJson } = require("./atomic-json.cjs");
+const {
+  discoverBrowserCaches,
+  recognizeCacheRoot,
+} = require("./browser-cache.cjs");
 
 const DAY = 24 * 60 * 60 * 1000;
 const LIMIT = 50_000;
@@ -27,6 +31,7 @@ function createCleaner({
   downloadsRoot,
   trashItem,
   compactFiles,
+  assertBrowserClosed,
   onProgress = () => {},
 }) {
   if (!userData || typeof trashItem !== "function")
@@ -58,13 +63,41 @@ function createCleaner({
   let recovery = { recovered: 0, needsReview: 0, pending: false };
   let pendingRecords = new Set();
   let recoveryBlocked = false;
+  let browserDiscoveryErrors = 0;
+
+  async function refreshBrowserRoots() {
+    const discovery = await discoverBrowserCaches(localAppData);
+    browserDiscoveryErrors = discovery.errors;
+    const known = new Set(roots.map((root) => root.path));
+    for (const root of discovery.roots)
+      if (!known.has(root.path)) roots.push(root);
+  }
+  async function guard(root) {
+    if (!root.browser) return;
+    if (typeof assertBrowserClosed !== "function")
+      throw Error(
+        `${root.label} cache skipped: browser status could not be checked.`,
+      );
+    await assertBrowserClosed(root.browser);
+  }
 
   const ready = (async () => {
     await fs.mkdir(storage, { recursive: true });
+    await refreshBrowserRoots();
     try {
       const data = JSON.parse(await fs.readFile(manifestPath, "utf8"));
       if (!data || data.version !== 1 || !Array.isArray(data.files))
         throw new Error("Invalid bin manifest.");
+      // Retain references and Undo metadata even if a profile is temporarily
+      // unavailable. Reconstruct only exact recognized cache roots, never paths
+      // supplied by the renderer or arbitrary manifest locations.
+      for (const item of data.files.slice(0, LIMIT)) {
+        const root =
+          item?.category === "browser-cache" &&
+          recognizeCacheRoot(localAppData, item.root);
+        if (root && !roots.some((known) => known.path === root.path))
+          roots.push(root);
+      }
       records = data.files.filter(validRecord).slice(0, LIMIT);
     } catch (error) {
       if (error.code !== "ENOENT")
@@ -285,6 +318,7 @@ function createCleaner({
   }
 
   function publicFile(item) {
+    const browser = roots.find((root) => root.path === item.root)?.label;
     return {
       id: item.id,
       path: item.path,
@@ -295,12 +329,15 @@ function createCleaner({
         !!item.compaction?.managed && !item.compaction?.recoveryProblem,
       recoveryProblem: item.compaction?.recoveryProblem,
       category: item.category,
+      browser,
       reason:
         item.category === "temporary"
           ? "Temporary file · unchanged for over 7 days"
-          : item.category === "crash-dumps"
-            ? "Crash dump · unchanged for over 30 days"
-            : "Download · unchanged for over 180 days · selected by you",
+          : item.category === "browser-cache"
+            ? `${browser || "Browser"} cache · unchanged for over 7 days · browser must be closed`
+            : item.category === "crash-dumps"
+              ? "Crash dump · unchanged for over 30 days"
+              : "Download · unchanged for over 180 days · selected by you",
     };
   }
 
@@ -314,11 +351,11 @@ function createCleaner({
 
   // Check every ancestor, including the configured root, to reject junctions and
   // symlinks. A root's string prefix alone does not establish containment.
-  async function safeFile(filename, root) {
+  async function safeFile(filename, root, directory = false) {
     filename = path.resolve(filename);
     if (
       !inside(root.path, filename) ||
-      filename === root.path ||
+      (filename === root.path && !directory) ||
       inside(storage, filename)
     )
       throw new Error("Outside an allowed cleaning location.");
@@ -337,7 +374,9 @@ function createCleaner({
         throw new Error("An ancestor is no longer a folder.");
       if (
         index === pieces.length - 1 &&
-        (!metadata.isFile() || metadata.nlink > 1)
+        (directory
+          ? !metadata.isDirectory()
+          : !metadata.isFile() || metadata.nlink > 1)
       )
         throw new Error("Only ordinary, unlinked files can enter the bin.");
     }
@@ -381,11 +420,35 @@ function createCleaner({
       limited: false,
       cancelled: false,
       errors: 0,
+      protectedBrowsers: [],
     };
     const found = [];
     let lastUpdate = 0;
     const seen = new Set();
     for (const root of selectedRoots) {
+      try {
+        await safeFile(root.path, root, true);
+      } catch (error) {
+        if (error.code !== "ENOENT") {
+          coverage.skipped++;
+          if (error.code) coverage.errors++;
+        }
+        continue;
+      }
+      try {
+        await guard(root);
+      } catch (error) {
+        if (
+          !coverage.protectedBrowsers.some(
+            (item) => item.browser === root.browser,
+          )
+        )
+          coverage.protectedBrowsers.push({
+            browser: root.browser,
+            reason: error.message,
+          });
+        continue;
+      }
       const pending = [root.path];
       while (pending.length) {
         if (signal?.aborted || closed) {
@@ -486,6 +549,7 @@ function createCleaner({
     const root = roots.find(
       (root) => root.path === item.root && root.category === item.category,
     );
+    await guard(root);
     const metadata = await safeFile(item.path, root);
     if (!eligible(item.path, root, metadata))
       throw new Error("File no longer matches its cleaning rule.");
@@ -513,10 +577,12 @@ function createCleaner({
       }),
     scan: ({ signal } = {}) =>
       run(async () => {
+        await refreshBrowserRoots();
         const { found, coverage } = await walk(
           roots.filter((root) => root.category !== "old-downloads"),
           signal,
         );
+        coverage.errors += browserDiscoveryErrors;
         if (coverage.cancelled) return { ...bin(), added: 0, coverage };
         const existing = new Set(records.map((file) => file.path));
         const fresh = new Map(found.map((file) => [file.path, file]));

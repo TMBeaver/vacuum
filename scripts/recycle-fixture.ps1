@@ -3,7 +3,9 @@ $request=[Console]::In.ReadToEnd() | ConvertFrom-Json
 $original=[IO.Path]::GetFullPath($request.originalPath)
 $originalFolder=[IO.Path]::GetDirectoryName($original)
 $originalName=[IO.Path]::GetFileName($original)
-if ($originalFolder -notmatch '\\vacuum-storage-proof-[^\\]+\\temp$') { throw 'This verification helper only accepts its isolated proof fixture.' }
+$storageFixture=$originalFolder -match '\\vacuum-storage-proof-[^\\]+\\temp$'
+$browserFixture=($originalFolder -match '\\vacuum-browser-proof-[^\\]+\\local\\(?:Google\\Chrome|Microsoft\\Edge)\\User Data\\Default\\Cache\\Cache_Data$') -and $originalName -eq 'vacuum-browser-cache-proof.bin'
+if (-not ($storageFixture -or $browserFixture)) { throw 'This verification helper only accepts its isolated proof fixture.' }
 $shell=New-Object -ComObject Shell.Application
 $bin=$shell.Namespace(10)
 $match=$null

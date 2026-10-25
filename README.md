@@ -1,14 +1,14 @@
 # vacuum
 
-A quiet little robot vacuum for your Windows computer. Real 3D hardware, a dock in the system tray, and a little companion that drives small looping passes in the taskbar space left of Start while it works.
+A Windows cleaner with a working 3D robot, a system-tray dock, and a small taskbar companion that moves while files are scanned.
 
 ![Vacuum in graphite](docs/vacuum-dark.png)
 
 ## Development audit
 
-The active quality work is documented in [quality-audit.md](docs/quality-audit.md). Development includes an optional reversible NTFS compression pass for selected bin files, measured disk free-space readouts, and continuous material transitions that preserve the 3D camera. Stable 0.2 installers below predate these development changes. Compression is not automatic; normal undo and integrity checks pass, while interruption recovery remains an open release gate.
+The active quality work is documented in [quality-audit.md](docs/quality-audit.md). Development includes an optional reversible NTFS compression pass for selected bin files, measured disk free-space readouts, and continuous material transitions that preserve the 3D camera. Stable 0.2 installers below predate these development changes. Compression is not automatic. Normal Undo, integrity checks and interrupted-process recovery have passed native verification; the remaining release gates are listed in the audit.
 
-Reproducible native checks: `node scripts/verify-storage.cjs`, `node scripts/verify-compaction.cjs`, and `node scripts/verify-animation.cjs`. They use isolated synthetic fixtures. Storage/compaction fixtures are retained rather than permanently removed. The animation-only harness is separate from real cleanup and does not prolong a scan.
+Reproducible native checks: `node scripts/verify-storage.cjs`, `node scripts/verify-compaction.cjs`, and `node scripts/verify-animation.cjs`, `node scripts/verify-browser-cache.cjs`, and `node scripts/verify-scheduling.cjs`. They use isolated synthetic fixtures. Storage/compaction fixtures are retained rather than permanently removed. The animation-only harness is separate from real cleanup and does not prolong a scan.
 
 ## Use it
 
@@ -31,13 +31,16 @@ Drag around the model to inspect it. Its power button starts a round; the home b
 
 Original, narrow allowlisted rules:
 
-| Location                                  | Rule                                                        |
-| ----------------------------------------- | ----------------------------------------------------------- |
-| Current user's temporary directory        | `.tmp`, `.temp`, `.log`, unchanged for more than seven days |
-| Current user's `AppData/Local/CrashDumps` | `.dmp`, unchanged for more than 30 days                     |
-| Downloads, review only                    | Ordinary files unchanged for more than 180 days             |
+| Location                                  | Rule                                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Current user's temporary directory        | `.tmp`, `.temp`, `.log`, unchanged for more than seven days                                                         |
+| Current user's `AppData/Local/CrashDumps` | `.dmp`, unchanged for more than 30 days                                                                             |
+| Chrome / Edge standard profile caches     | Network `Cache/Cache_Data` and `Code Cache/js` / `wasm`, unchanged for more than seven days; browser must be closed |
+| Downloads, review only                    | Ordinary files unchanged for more than 180 days                                                                     |
 
-Personal usefulness cannot be inferred from file age. Automatic rounds do not touch Desktop, Documents, photos, backups, registry, browser cookies, browser profiles, application dependencies, Windows servicing files, or Recycle Bin contents.
+Personal usefulness cannot be inferred from file age. Automatic rounds do not touch Desktop, Documents, photos, backups, registry, browser cookies, logins, sessions, extensions, site storage, application dependencies, Windows servicing files, or Recycle Bin contents.
+
+Only standard `Default` and `Profile N` Chrome/Edge profiles under the current user's Local AppData are recognized. Custom, guest and other browser locations are excluded. Windows process detection protects each browser independently; unavailable detection protects its caches. The guard is checked again before recycling or compression, so reopening the browser after collection blocks that action. Process snapshots have a short 500 ms lifetime; the normal OS check-to-use race remains. Cache files are kept in place until explicit recycling.
 
 Each traversal is capped at 50,000 entries. Partial coverage and unreadable locations are reported. The bin is a persisted list of references, so its byte count is potential cleanup, **not space already reclaimed**. Emptying rechecks root containment, ancestors, links, file identity, size and timestamps. Changed or inaccessible files stay in the bin. Recycling failure has no permanent-delete fallback. Electron's path-based Recycle Bin API still has a small check-to-use race; this is not a file-handle-atomic operation.
 

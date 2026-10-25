@@ -1,0 +1,13 @@
+{
+  "packaged": true,
+  "browser": "Chrome",
+  "processGuardFixture": "signed Windows loopback-ping process with browser image name",
+  "runningScanSkipped": true,
+  "closedScanCollected": 1,
+  "reopenedRecycleBlocked": true,
+  "recycledFiles": 1,
+  "restored": true,
+  "contentsPreserved": true,
+  "protectedProfileDataPreserved": true,
+  "permanentlyDeletedFiles": 0
+}

@@ -52,19 +52,20 @@ async function main() {
       env: { ...process.env, VACUUM_TEST_ROOT: root },
     });
   const waitForRound = async (page, previous = null) => {
-    await page.waitForFunction(
-      async (previous) => {
-        const state = await window.vacuum?.get();
-        return (
-          state?.phase === "docked" &&
-          !!state.lastRun &&
-          state.lastRun !== previous
-        );
-      },
-      previous,
-      { timeout: 30000 },
-    );
-    return page.evaluate(() => window.vacuum.get());
+    await page.waitForFunction(() => !!window.vacuum);
+    const deadline = Date.now() + 30000;
+    while (Date.now() < deadline) {
+      const state = await page.evaluate(() => window.vacuum.get());
+      if (
+        state.phase === "docked" &&
+        state.lastRun &&
+        state.lastRun !== previous
+      )
+        return state;
+      if (state.roundError) throw Error(state.roundError);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw Error("Scheduled scan did not finish within 30 seconds.");
   };
   let app = await launch();
   const report = { packaged: !!process.env.VACUUM_PACKAGED_EXE };

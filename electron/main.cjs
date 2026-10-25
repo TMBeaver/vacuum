@@ -19,6 +19,7 @@ const { classifyScanResult } = require("./defender.cjs");
 const { chooseLane, inspectTaskbar } = require("./taskbar.cjs");
 const { sampleStorage, describeStorageChange } = require("./storage.cjs");
 const { compactFiles } = require("./compression.cjs");
+const { createBrowserGuard } = require("./browser-cache.cjs");
 let quitAfterOperation = false;
 let taskbarGeometry = null;
 
@@ -425,9 +426,10 @@ app.whenReady().then(async () => {
       : app.getPath("downloads"),
     trashItem: (p) => shell.trashItem(p),
     compactFiles,
+    assertBrowserClosed: createBrowserGuard(),
     onProgress: (p) => {
       state.progress = p;
-      state.message = `Sweeping ${p.category === "crash-dumps" ? "crash dumps" : "temporary files"} · ${p.visited.toLocaleString()} checked · ${p.found.toLocaleString()} found`;
+      state.message = `Scanning ${p.category === "crash-dumps" ? "crash dumps" : p.category === "browser-cache" ? "browser caches" : "temporary files"} · ${p.visited.toLocaleString()} checked · ${p.found.toLocaleString()} found`;
       for (const window of [main, companion])
         if (window && !window.isDestroyed())
           window.webContents.send("vacuum:progress", {
@@ -548,7 +550,7 @@ app.whenReady().then(async () => {
         ),
       };
       await saveHistory();
-      state.message = `${result.trashed} ${result.trashed === 1 ? "file" : "files"} sent to Recycle Bin.${result.skipped.length ? " Changed or inaccessible files were skipped." : ""}`;
+      state.message = `${result.trashed} ${result.trashed === 1 ? "file" : "files"} sent to Recycle Bin.${result.skipped.length ? " Skipped files remain in the bin; review their reasons." : ""}`;
       return result;
     } finally {
       state.phase = "docked";

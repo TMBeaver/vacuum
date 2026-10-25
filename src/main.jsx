@@ -448,6 +448,11 @@ function App() {
               : `Partial round: ${s.coverage.errors} locations could not be read.`}
           </p>
         )}
+        {!!s.coverage?.protectedBrowsers?.length && (
+          <p className="coverage-note browser-coverage" role="status">
+            {s.coverage.protectedBrowsers.map((item) => item.reason).join(" ")}
+          </p>
+        )}
       </main>
       {error && (
         <div className="toast" role="alert">
@@ -576,8 +581,10 @@ function App() {
                   <span className="eyebrow">Scan rules</span>
                   <p>
                     Temporary .tmp, .temp and .log files older than 7 days.
-                    Crash dumps older than 30 days. No registry tweaks or
-                    personal folders in automatic cleaning.
+                    Crash dumps older than 30 days. Chrome and Edge network and
+                    code caches older than 7 days, while the browser is closed.
+                    Cookies, logins, sessions, extensions and site storage stay
+                    untouched. Personal folders are excluded from daily scans.
                   </p>
                 </div>
               </div>

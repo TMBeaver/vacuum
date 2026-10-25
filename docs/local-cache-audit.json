@@ -1,0 +1,29 @@
+{
+  "realLocalFilesystem": true,
+  "readOnly": true,
+  "elapsedMs": 122646,
+  "cacheCandidates": 41939,
+  "candidateSize": "3.94 GB",
+  "browsers": {
+    "Chrome": {
+      "count": 40996,
+      "bytes": 4046869861,
+      "size": "3.77 GB"
+    },
+    "Edge": {
+      "count": 943,
+      "bytes": 178351994,
+      "size": "170.09 MB"
+    }
+  },
+  "coverage": {
+    "visited": 46499,
+    "skipped": 0,
+    "limited": false,
+    "cancelled": false,
+    "errors": 0,
+    "protectedBrowsers": []
+  },
+  "userFilesMoved": 0,
+  "explanation": "Logical size of eligible cache references, not measured space freed. No file was recycled or compressed."
+}
