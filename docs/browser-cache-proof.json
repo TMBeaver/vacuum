@@ -1,6 +1,6 @@
 {
   "packaged": true,
-  "browser": "Chrome",
+  "browser": "Edge",
   "processGuardFixture": "signed Windows loopback-ping process with browser image name",
   "runningScanSkipped": true,
   "closedScanCollected": 1,

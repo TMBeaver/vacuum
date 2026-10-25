@@ -1,5 +1,7 @@
 # Verification — 25 October 2026
 
+Current release: **0.3.0**, with 71 passing fixture tests and 14 installed-app native checks. The final requirement-by-requirement evidence, installer upgrade results and limits are in [release-audit-0.3.0.md](release-audit-0.3.0.md) and `final-verification.json`. The sections below retain earlier verification checkpoints.
+
 - Production Vite build: passed.
 - Fixture engine/helper suite: 24 tests passed, including junction substitution, corrupt manifests, changed files, cancellation, failed recycling, explicit old-file collection and Vilnius daylight-saving scheduling.
 - Native Electron UI: launched and rendered the real WebGL robot. Verified both themes, persisted preferences, daily toggle, scan → review → Windows Recycle Bin, and old-file opt-in/release. No renderer errors.

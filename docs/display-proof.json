@@ -1,0 +1,17 @@
+{
+  "packaged": true,
+  "syntheticDisplayEvents": [
+    "display-metrics-changed",
+    "display-removed",
+    "display-added"
+  ],
+  "stationFitsReducedWorkArea": true,
+  "companionFitsReducedWorkArea": true,
+  "staleTaskbarRejected": true,
+  "sameCompanionWindowAndCanvas": true,
+  "motionContinues": true,
+  "realPrimaryPlacementRestored": true,
+  "physicalMonitorReconfigured": false,
+  "rendererErrors": 0,
+  "permanentlyDeletedFiles": 0
+}

@@ -85,6 +85,7 @@ const assert = require("node:assert/strict");
             last = 0;
           const intervals = [],
             positions = [];
+          const width = document.querySelector(".taskbar-canvas").clientWidth;
           function frame(now) {
             if (!start) start = now;
             if (last) intervals.push(now - last);
@@ -98,11 +99,13 @@ const assert = require("node:assert/strict");
               let rightSeen = false,
                 returned = false;
               for (const x of positions) {
-                if (x > 230) rightSeen = true;
-                if (rightSeen && x < 60) returned = true;
+                if (x > width * 0.8) rightSeen = true;
+                if (rightSeen && x < Math.min(60, width * 0.25))
+                  returned = true;
               }
               resolve({
                 animationOnly: true,
+                width,
                 seconds: (now - start) / 1000,
                 frames: intervals.length,
                 averageFps:
@@ -120,15 +123,6 @@ const assert = require("node:assert/strict");
           requestAnimationFrame(frame);
         }),
     );
-    assert.ok(
-      interaction.medianMs <= 25,
-      "3D interaction frame pacing is too slow",
-    );
-    assert.ok(
-      loops.returned,
-      "The visible companion did not complete a looping pass",
-    );
-    assert.ok(loops.medianMs <= 25, "Companion frame pacing is too slow");
     const report = {
       packaged: !!process.env.VACUUM_PACKAGED_EXE,
       interaction,
@@ -143,6 +137,15 @@ const assert = require("node:assert/strict");
       JSON.stringify(report, null, 2),
     );
     console.log(JSON.stringify(report, null, 2));
+    assert.ok(
+      interaction.medianMs <= 25,
+      "3D interaction frame pacing is too slow",
+    );
+    assert.ok(
+      loops.returned,
+      "The visible companion did not complete a looping pass",
+    );
+    assert.ok(loops.medianMs <= 25, "Companion frame pacing is too slow");
   } finally {
     await app.close();
   }

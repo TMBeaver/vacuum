@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Power,
@@ -104,6 +104,7 @@ function Companion() {
   );
 }
 function App() {
+  const returnFocus = useRef(null);
   const [s, setS] = useState(initial),
     [panel, setPanel] = useState(null),
     [error, setError] = useState(""),
@@ -147,7 +148,10 @@ function App() {
         if (!items.length) return;
         const first = items[0],
           last = items[items.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
+        if (!document.activeElement.closest(".sheet")) {
+          e.preventDefault();
+          (e.shiftKey ? last : first).focus();
+        } else if (e.shiftKey && document.activeElement === first) {
           e.preventDefault();
           last.focus();
         } else if (!e.shiftKey && document.activeElement === last) {
@@ -159,6 +163,19 @@ function App() {
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
   }, []);
+  useEffect(() => {
+    if (panel) {
+      if (!document.activeElement.closest(".sheet"))
+        document.querySelector(".sheet button:not(:disabled)")?.focus();
+      return;
+    }
+    if (returnFocus.current) {
+      const opener = returnFocus.current;
+      returnFocus.current = null;
+      if (opener.isConnected && !opener.disabled)
+        opener.focus({ preventScroll: true });
+    }
+  }, [panel]);
   async function run(fn) {
     setError("");
     setWorking(true);
@@ -191,6 +208,7 @@ function App() {
     run(() => (active ? api.stop() : api.start()));
   }
   async function openPanel(name) {
+    if (!panel) returnFocus.current = document.activeElement;
     setPanel(name);
     setConfirm(false);
     setSkipped([]);

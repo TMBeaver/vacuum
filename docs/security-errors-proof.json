@@ -1,0 +1,23 @@
+{
+  "packaged": true,
+  "scenarios": [
+    {
+      "mode": "unavailable",
+      "status": "unavailable",
+      "honestResultVisible": true,
+      "windowsSecurityActionPresent": true,
+      "fixtureContentsPreserved": true
+    },
+    {
+      "mode": "cli-error",
+      "status": "attention",
+      "honestResultVisible": true,
+      "windowsSecurityActionPresent": true,
+      "fixtureContentsPreserved": true
+    }
+  ],
+  "cliErrorUsesHarmlessWindowsIdentityUtility": true,
+  "systemAntivirusConfigurationChanged": false,
+  "malwareSamplesUsed": false,
+  "permanentlyDeletedFiles": 0
+}

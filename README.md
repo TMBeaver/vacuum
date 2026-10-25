@@ -4,15 +4,15 @@ A Windows cleaner with a working 3D robot, a system-tray dock, and a small taskb
 
 ![Vacuum in graphite](docs/vacuum-dark.png)
 
-## Development audit
+## Verified Windows release
 
-The active quality work is documented in [quality-audit.md](docs/quality-audit.md). Development includes an optional reversible NTFS compression pass for selected bin files, measured disk free-space readouts, and continuous material transitions that preserve the 3D camera. Stable 0.2 installers below predate these development changes. Compression is not automatic. Normal Undo, integrity checks and interrupted-process recovery have passed native verification; the remaining release gates are listed in the audit.
+The 0.3 release adds a thicker physical robot, Bahnschrift/Segoe UI typography, MB/GB/TB readouts, performance review, closed-browser cache protection and optional reversible NTFS compression. Tests cover native file integrity, Undo after edits/restart, interrupted operations, keyboard focus, display-layout events and installer upgrades. Current evidence and verification limits are in [the 0.3 audit](docs/release-audit-0.3.0.md); development history remains in [quality-audit.md](docs/quality-audit.md).
 
 Reproducible native checks: `node scripts/verify-storage.cjs`, `node scripts/verify-compaction.cjs`, `node scripts/verify-animation.cjs`, `node scripts/verify-browser-cache.cjs`, `node scripts/verify-scheduling.cjs`, `node scripts/verify-performance.cjs`, `node scripts/verify-edited-undo.cjs`, and `node scripts/verify-startup.cjs`. They use isolated synthetic fixtures. Storage/compaction fixtures are retained rather than permanently removed. The animation-only harness is separate from real cleanup and does not prolong a scan.
 
 ## Use it
 
-The current development installer is [Vacuum 0.3.0-alpha.2](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.0-alpha.2). It includes the new robot, performance review, cache guards, edited-file Undo and verified Windows startup registration. The last stable release is 0.2.0. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray; right-click its tray icon to quit.
+Download [Vacuum 0.3.0](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.0). The current-user installer creates Desktop and Start menu shortcuts. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray; right-click its tray icon to quit.
 
 - Press the **power button on the 3D robot** to collect known leftovers into its dust bin.
 - Open the bin to review individual files. **Empty selected** asks for confirmation and sends those files to Windows Recycle Bin. Scanning itself never moves files, and the bin never empties automatically.
@@ -79,7 +79,7 @@ Settings, the reference bin and the most recent round are stored under Electron'
 
 Reversible compression writes a flushed recovery journal before Windows changes file allocation. After an interrupted pass, Vacuum verifies the file identity and SHA-256 before restoring its Undo state. Files that cannot be verified remain protected in the bin with a reason; a pending inspection can be retried from the bin. Recovery never modifies file contents. `node scripts/verify-compression-recovery.cjs` verifies this using an actual interrupted child process and a retained synthetic fixture.
 
-This is an unsigned initial Windows release. The source and installer are private. The interface uses Windows Bahnschrift and Segoe UI Variable. Library notices are included with the app.
+This is an unsigned Windows release. The source and installer are private. The interface uses Windows Bahnschrift and Segoe UI Variable. Library notices are included with the app.
 
 ## Performance review
 

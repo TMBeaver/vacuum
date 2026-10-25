@@ -1,8 +1,10 @@
-# Full quality goal — active audit
+# Quality development history
+
+The final 0.3 requirement-by-requirement audit is [release-audit-0.3.0.md](release-audit-0.3.0.md). The checkpoints below record development history; their then-open gates were exercised against the installed 0.3 release, including keyboard/focus, display events, Defender failure UI, graceful lifecycle and actual installer upgrades.
 
 The goal remains the complete Windows robot-cleaner experience: professional physical UI, useful and correct cleaning decisions, smooth 3D and taskbar movement, working daily operation and wet scanning, real testing on this computer, measured space behavior, and no permanent removal of personal files. This audit does not treat a smaller passing feature set as completion.
 
-The preceding goal work is **progress**: source changed, native behavior was exercised, actual storage and file integrity were measured, and remaining work is identified below. The full goal is not yet marked complete.
+At this development checkpoint, source had changed, native behavior had been exercised, and storage/file integrity had been measured; the remaining gates recorded below were still open. This historical checkpoint was not treated as completion.
 
 | Requirement                                                  | Current evidence                                                                                                | Audit result / next action                                                                                                                                                                                           |
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

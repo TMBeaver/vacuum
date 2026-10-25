@@ -1,0 +1,10 @@
+{
+  "packaged": true,
+  "keyboardPanelActivation": true,
+  "focusContained": true,
+  "escapeRestoresOpener": true,
+  "physicalControlKeyboardAccess": true,
+  "collectionPanelTransitionRetainsFocus": true,
+  "rendererErrors": 0,
+  "permanentlyDeletedFiles": 0
+}

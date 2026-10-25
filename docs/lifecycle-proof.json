@@ -1,0 +1,11 @@
+{
+  "packaged": true,
+  "stationCloseHidesToTray": true,
+  "stationCanReopen": true,
+  "quitDeferredDuringRecycleRefusal": true,
+  "refusedFileRetainedAcrossRestart": true,
+  "quitDeferredThroughNativeCompressionCommit": true,
+  "undoAfterGracefulQuit": true,
+  "contentsPreserved": true,
+  "permanentlyDeletedFiles": 0
+}

@@ -16,7 +16,7 @@ const { spawn } = require("node:child_process");
 const { createCleaner } = require("./cleaner.cjs");
 const { isDue } = require("./schedule.cjs");
 const { classifyScanResult } = require("./defender.cjs");
-const { chooseLane, inspectTaskbar } = require("./taskbar.cjs");
+const { chooseLane, inspectTaskbar, fitWindow } = require("./taskbar.cjs");
 const { sampleStorage, describeStorageChange } = require("./storage.cjs");
 const { compactFiles } = require("./compression.cjs");
 const { createBrowserGuard } = require("./browser-cache.cjs");
@@ -27,6 +27,7 @@ let startupService;
 if (process.platform === "win32") app.setAppUserModelId(STARTUP_NAME);
 let quitAfterOperation = false;
 let taskbarGeometry = null;
+let layoutTimer, layoutProbe;
 
 let main,
   companion,
@@ -208,7 +209,7 @@ function showCompanion() {
     companion.webContents.on("did-finish-load", () => {
       if (controller) {
         companion.showInactive();
-        fitCompanion(placement);
+        fitCompanion(state.companionPlacement || placement);
       }
       send();
     });
@@ -239,6 +240,44 @@ function fitCompanion(placement) {
     height = Math.max(1, height - extraHeight);
   }
   state.companionPlacement = { ...placement, ...companion.getBounds() };
+}
+async function placeCompanion(signal) {
+  layoutProbe?.abort();
+  const probe = new AbortController();
+  layoutProbe = probe;
+  const cancel = () => probe.abort();
+  if (signal?.aborted) return;
+  signal?.addEventListener("abort", cancel, { once: true });
+  try {
+    const geometry = await inspectTaskbar(probe.signal);
+    if (probe.signal.aborted || quitting || !controller || !settings.companion)
+      return;
+    taskbarGeometry = geometry;
+    showCompanion();
+    send();
+  } finally {
+    signal?.removeEventListener("abort", cancel);
+  }
+}
+function layoutChanged() {
+  clearTimeout(layoutTimer);
+  layoutProbe?.abort();
+  taskbarGeometry = null;
+  companion?.hide();
+  layoutTimer = setTimeout(async () => {
+    if (quitting) return;
+    if (main && !main.isDestroyed()) {
+      const work = screen.getDisplayMatching(main.getBounds()).workArea;
+      main.setMinimumSize(
+        Math.min(900, Math.max(1, work.width - 24)),
+        Math.min(680, Math.max(1, work.height - 24)),
+      );
+      if (!main.isMaximized() && !main.isFullScreen())
+        main.setBounds(fitWindow(main.getBounds(), work));
+    }
+    if (controller && settings.companion)
+      await placeCompanion(controller.signal);
+  }, 150);
 }
 function secure(w) {
   w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -344,8 +383,7 @@ async function startClean() {
   send();
   try {
     if (settings.companion) {
-      taskbarGeometry = await inspectTaskbar(active.signal);
-      if (!active.signal.aborted) showCompanion();
+      await placeCompanion(active.signal);
     }
     await new Promise((resolve) => {
       if (active.signal.aborted) return resolve();
@@ -554,7 +592,7 @@ app.whenReady().then(async () => {
       }
       if (Object.hasOwn(patch, "companion")) {
         if (!settings.companion) companion?.hide();
-        else if (controller) showCompanion();
+        else if (controller) await placeCompanion(controller.signal);
       }
       send();
       return settings;
@@ -600,8 +638,12 @@ app.whenReady().then(async () => {
       return result;
     } finally {
       state.phase = "docked";
-      state.recovery = await cleaner.getRecovery();
-      send();
+      try {
+        state.recovery = await cleaner.getRecovery();
+      } finally {
+        send();
+        if (quitAfterOperation) app.quit();
+      }
     }
   });
   ipcMain.handle("vacuum:release", async (_e, selection) => {
@@ -643,10 +685,13 @@ app.whenReady().then(async () => {
       return result;
     } finally {
       state.phase = "docked";
-      state.bin = await cleaner.getBin();
-      state.recovery = await cleaner.getRecovery();
-      send();
-      if (quitAfterOperation) app.quit();
+      try {
+        state.bin = await cleaner.getBin();
+        state.recovery = await cleaner.getRecovery();
+      } finally {
+        send();
+        if (quitAfterOperation) app.quit();
+      }
     }
   });
   ipcMain.handle("vacuum:old", () => cleaner.reviewOldFiles());
@@ -682,6 +727,7 @@ app.whenReady().then(async () => {
     } finally {
       state.phase = "docked";
       send();
+      if (quitAfterOperation) app.quit();
     }
   });
   ipcMain.handle("vacuum:collect", async (_e, selection) => {
@@ -718,6 +764,12 @@ app.whenReady().then(async () => {
   });
   timer = setInterval(scheduleTick, 30000);
   powerMonitor.on("resume", scheduleTick);
+  for (const event of [
+    "display-added",
+    "display-removed",
+    "display-metrics-changed",
+  ])
+    screen.on(event, layoutChanged);
   scheduleTick();
   if (process.argv.includes("--smoke-test")) {
     setTimeout(async () => {
@@ -739,7 +791,7 @@ app.whenReady().then(async () => {
 });
 app.on("second-instance", showMain);
 app.on("before-quit", (event) => {
-  if (["compacting", "optimizing"].includes(state.phase)) {
+  if (["emptying", "compacting", "optimizing"].includes(state.phase)) {
     event.preventDefault();
     quitAfterOperation = true;
     state.message = "Finishing the current action before quitting.";
@@ -747,6 +799,8 @@ app.on("before-quit", (event) => {
     return;
   }
   quitting = true;
+  clearTimeout(layoutTimer);
+  layoutProbe?.abort();
   controller?.abort();
   cleaner?.close();
   clearInterval(timer);

@@ -1,0 +1,25 @@
+{
+  "version": "0.3.0",
+  "installerSha256": "8cf639427c5706d7b4f30e597b396674a3c35b30f67b4c8cdb366122168d8ca3",
+  "installedAsarSha256": "e57c964ea28830f2ccb148b8c74ef642442a3820e1742078a3ea03041c22128e",
+  "installedPayloadMatchesBuild": true,
+  "nativeModulesMatchSource": true,
+  "fixtureTests": 71,
+  "installedNativeChecks": [
+    "ui",
+    "keyboard",
+    "display",
+    "lifecycle",
+    "security-errors",
+    "storage",
+    "animation",
+    "scheduling",
+    "browser-cache",
+    "large-bin",
+    "performance",
+    "startup",
+    "edited-undo",
+    "compression-recovery"
+  ],
+  "personalFilesPermanentlyDeleted": 0
+}

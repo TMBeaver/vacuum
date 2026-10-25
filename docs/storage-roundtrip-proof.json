@@ -1,0 +1,17 @@
+{
+  "fixtureBytes": 8388608,
+  "recycledBytes": 8388608,
+  "recycledFileBytes": 8388608,
+  "sameVolumeFileIdentity": true,
+  "originalHash": "910833f5cad8add4963e7bd1a4ad3f81556e77132be0976a5a48e79be3478d0b",
+  "recycledHash": "910833f5cad8add4963e7bd1a4ad3f81556e77132be0976a5a48e79be3478d0b",
+  "restoredHash": "910833f5cad8add4963e7bd1a4ad3f81556e77132be0976a5a48e79be3478d0b",
+  "restored": true,
+  "permanentlyDeletedFiles": 0,
+  "driveFreeBefore": 19828068352,
+  "driveFreeAfterRecycle": 19814883328,
+  "driveFreeAfterRestore": 19814883328,
+  "observedDriveDelta": -13185024,
+  "attributedFreedBytes": null,
+  "explanation": "Files in Windows Recycle Bin remain recoverable and continue to use drive space. Free-space changes can include other applications; recycled bytes are not space freed."
+}

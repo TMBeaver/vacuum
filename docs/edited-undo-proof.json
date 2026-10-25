@@ -1,7 +1,7 @@
 {
   "packaged": true,
   "logicalBytes": 8454144,
-  "compressedAllocationBeforeUndo": 1114112,
+  "compressedAllocationBeforeUndo": 1056768,
   "allocationAfterUndo": 8454144,
   "editsPreserved": true,
   "undoAcrossRestart": true,

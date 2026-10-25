@@ -1,0 +1,17 @@
+{
+  "nativeSilentCurrentUserInstall": true,
+  "baselineVersion": "0.3.0-alpha.2",
+  "upgradedVersion": "0.3.0",
+  "upgradeRegistrationCorrect": true,
+  "oldInstallFullyRetainedAndHashVerified": true,
+  "oldInstallRetainedFileCount": 76,
+  "userDataFixturePreservedThroughUpgrade": true,
+  "fixtureRetainedAfterTest": true,
+  "installedPayloadMatchesVerifiedBuild": true,
+  "preExistingVacuumInstallationChanged": false,
+  "personalFilesPermanentlyDeleted": 0,
+  "verifierResumedAfterClearingStaleAsarIndex": true,
+  "upgradeSteps": ["0.3.0-alpha.2 -> 0.3.0-alpha.3", "0.3.0-alpha.3 -> 0.3.0"],
+  "stablePreviousInstallRetainedFileCount": 76,
+  "stablePreviousInstallHashManifestVerifiedAfterUpgrade": true
+}

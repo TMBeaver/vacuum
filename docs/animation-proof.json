@@ -1,0 +1,23 @@
+{
+  "packaged": true,
+  "interaction": {
+    "frames": 413,
+    "averageFps": 165.00859003555877,
+    "medianMs": 6.099999999999909,
+    "p95Ms": 6.199999999999818
+  },
+  "taskbar": {
+    "animationOnly": true,
+    "width": 230,
+    "seconds": 16.0058,
+    "frames": 2641,
+    "averageFps": 165.00268652613428,
+    "medianMs": 6.099999999998545,
+    "p95Ms": 6.199999999999818,
+    "minX": 18.05,
+    "maxX": 211.52,
+    "rightSeen": true,
+    "returned": true
+  },
+  "fileOperationsDuringAnimationHarness": 0
+}
