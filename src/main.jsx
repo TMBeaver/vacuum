@@ -24,6 +24,7 @@ import {
 import RobotScene from "./RobotScene";
 import TaskbarCompanion from "./TaskbarCompanion";
 import FileReview from "./FileReview";
+import PerformanceReview from "./PerformanceReview";
 import { formatSize as bytes } from "./format-size.mjs";
 import "./style.css";
 import "./studio.css";
@@ -54,6 +55,9 @@ const preview = {
   onDock: () => () => {},
   window: () => {},
   security: () => {},
+  performance: async () => {
+    throw Error("Open the Windows app to review running apps and ports.");
+  },
   start: async () => {
     throw new Error("Open the Windows app to clean this computer.");
   },
@@ -111,7 +115,7 @@ function App() {
   const active = ["departing", "cleaning", "wet", "returning"].includes(
       s.phase,
     ),
-    busy = active || ["emptying", "compacting"].includes(s.phase),
+    busy = active || ["emptying", "compacting", "optimizing"].includes(s.phase),
     dark = s.settings.theme === "dark";
   useEffect(() => {
     api
@@ -305,11 +309,12 @@ function App() {
             auto={s.settings.auto}
             disabled={
               working ||
-              ["emptying", "compacting"].includes(s.phase) ||
+              ["emptying", "compacting", "optimizing"].includes(s.phase) ||
               s.phase === "returning" ||
               !!s.startupError
             }
             onAction={(action) => {
+              if (action === "performance" && !busy) openPanel("performance");
               if (action === "power") start();
               if (action === "bin" && !busy) openPanel("bin");
               if (action === "mop" && !busy) change({ wet: !s.settings.wet });
@@ -504,9 +509,11 @@ function App() {
                 ? "Settings"
                 : panel === "old"
                   ? "Old Downloads"
-                  : panel === "security"
-                    ? "Security scan"
-                    : "Dust bin"}
+                  : panel === "performance"
+                    ? "Performance"
+                    : panel === "security"
+                      ? "Security scan"
+                      : "Dust bin"}
             </h2>
             {panel === "settings" ? (
               <div className="settings-content">
@@ -588,6 +595,8 @@ function App() {
                   </p>
                 </div>
               </div>
+            ) : panel === "performance" ? (
+              <PerformanceReview api={api} disabled={busy} />
             ) : panel === "security" ? (
               <div className="security-content">
                 <div className="security-orb">

@@ -186,7 +186,8 @@ export function createRobot(dark) {
   cylinder(0.49, 0.06, rubber, 0, top(0.73), -0.91);
   cylinder(0.45, 0.19, body, 0, top(0.86), -0.91);
   ring(0.456, 0.022, led, top(0.85), -0.91);
-  cylinder(0.43, 0.045, porcelain, 0, top(0.98), -0.91);
+  cylinder(0.43, 0.045, porcelain, 0, top(0.98), -0.91, robot, "performance");
+  anchor("performance", 0, top(1.02), -0.91);
   const scanner = new THREE.Group();
   scanner.position.set(0, top(0.87), -0.91);
   robot.add(scanner);

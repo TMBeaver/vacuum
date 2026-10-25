@@ -11,6 +11,7 @@ const labels = {
   auto: "Autoclean",
   dock: "Home",
   station: "The station",
+  performance: "Performance",
 };
 const leaders = {
   power: "M20 20 L110 -45 L145 -45",
@@ -19,6 +20,7 @@ const leaders = {
   dock: "M20 20 L140 56 L180 56",
   bin: "M20 20 L20 98 L20 114",
   station: "M20 20 L44 -40 L52 -40",
+  performance: "M20 20 L-50 -75 L-85 -75",
 };
 export default function RobotScene({
   theme,
@@ -413,6 +415,7 @@ export default function RobotScene({
     auto: auto ? "Disable daily autoclean" : "Enable daily autoclean",
     dock: "Return to dock",
     station: active ? "Return to dock" : "Station settings",
+    performance: "Review apps and ports",
   };
   return (
     <div
@@ -484,9 +487,11 @@ export default function RobotScene({
                         ? auto
                           ? "Daily rounds on"
                           : "Daily rounds off"
-                        : action === "dock"
-                          ? "Return home"
-                          : "Schedule & settings"}
+                        : action === "performance"
+                          ? "Apps and ports"
+                          : action === "dock"
+                            ? "Return home"
+                            : "Schedule & settings"}
               </small>
             </span>
           </button>

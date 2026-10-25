@@ -20,6 +20,8 @@ const { chooseLane, inspectTaskbar } = require("./taskbar.cjs");
 const { sampleStorage, describeStorageChange } = require("./storage.cjs");
 const { compactFiles } = require("./compression.cjs");
 const { createBrowserGuard } = require("./browser-cache.cjs");
+const { createPerformance } = require("./performance.cjs");
+let performanceReview;
 let quitAfterOperation = false;
 let taskbarGeometry = null;
 
@@ -401,6 +403,13 @@ async function scheduleTick() {
     await startClean();
 }
 app.whenReady().then(async () => {
+  performanceReview = createPerformance({
+    protectPids: () => [
+      process.pid,
+      process.ppid,
+      ...app.getAppMetrics().map((metric) => metric.pid),
+    ],
+  });
   try {
     const saved = JSON.parse(await fs.readFile(configPath, "utf8"));
     if (["dark", "light"].includes(saved.theme)) settings.theme = saved.theme;
@@ -604,6 +613,23 @@ app.whenReady().then(async () => {
     }
   });
   ipcMain.handle("vacuum:old", () => cleaner.reviewOldFiles());
+  ipcMain.handle("vacuum:performance", () => performanceReview.review());
+  ipcMain.handle("vacuum:performance-action", async (_e, id, mode) => {
+    if (controller || state.phase !== "docked")
+      throw Error("Return to the dock before closing apps.");
+    state.phase = "optimizing";
+    state.message = "Applying the selected app action.";
+    send();
+    try {
+      return await performanceReview.act(id, mode);
+    } finally {
+      state.phase = "docked";
+      state.message =
+        "Performance review complete. Refresh to check current usage.";
+      send();
+      if (quitAfterOperation) app.quit();
+    }
+  });
   ipcMain.handle("vacuum:recover-compression", async () => {
     if (controller || state.phase !== "docked")
       throw Error("Return to the dock before verifying an interrupted pass.");
@@ -676,10 +702,10 @@ app.whenReady().then(async () => {
 });
 app.on("second-instance", showMain);
 app.on("before-quit", (event) => {
-  if (state.phase === "compacting") {
+  if (["compacting", "optimizing"].includes(state.phase)) {
     event.preventDefault();
     quitAfterOperation = true;
-    state.message = "Finishing the reversible file pass before quitting.";
+    state.message = "Finishing the current action before quitting.";
     send();
     return;
   }

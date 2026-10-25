@@ -858,3 +858,132 @@ footer,
 .sheet:has(.file-pagination) .file-list {
   max-height: calc(100dvh - 640px);
 }
+.hotspot-performance .hotspot-caption {
+  left: -195px;
+  top: -110px;
+  width: 120px;
+  align-items: flex-end;
+  text-align: right;
+}
+.performance-note,
+.performance-loading,
+.performance-error {
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 14px 0;
+  color: var(--muted);
+}
+.performance-error {
+  color: var(--text);
+  border-left: 2px solid var(--accent);
+  padding-left: 12px;
+}
+.performance-memory {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 20px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.performance-memory > span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.performance-memory strong {
+  display: block;
+  font-size: 19px;
+  font-weight: 500;
+  margin-top: 7px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.performance-memory button {
+  margin-left: auto;
+}
+.performance-processes {
+  max-height: calc(100dvh - 400px);
+  min-height: 180px;
+  overflow: auto;
+}
+.performance-process {
+  padding: 17px 0;
+  border-top: 1px solid var(--line);
+}
+.performance-process-heading {
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.performance-process-heading strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.performance-process-heading > span {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.performance-process > p {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 7px 0;
+}
+.performance-process-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.performance-process-actions small {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: var(--faint);
+}
+.performance-process-actions button {
+  flex-shrink: 0;
+}
+.performance-ports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 6px 0;
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.performance-confirm {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+}
+.performance-confirm p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.performance-confirm button {
+  margin-right: 12px;
+}
+.performance-details {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 9px 0;
+}
+.performance-details summary {
+  cursor: pointer;
+}
+.performance-details code {
+  display: block;
+  padding: 10px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 150px;
+  overflow: auto;
+  font-family: "Consolas", monospace;
+  font-size: 10px;
+}

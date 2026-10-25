@@ -58,7 +58,7 @@ const os = require("node:os");
       recursive: true,
     });
     await page.screenshot({ path: "test-results/dark.png" });
-    assert.equal(await page.locator(".robot-hotspot").count(), 6);
+    assert.equal(await page.locator(".robot-hotspot").count(), 7);
     await page.evaluate(() => {
       window.observedPhases = [];
       window.vacuum.subscribe((state) =>
@@ -154,6 +154,12 @@ const os = require("node:os");
       .getByRole("button", { name: "Close panel", exact: true })
       .click();
     // Click the physical 3D power mesh through its projected coordinate.
+    await page.waitForFunction(() =>
+      document
+        .querySelector(".robot-stage")
+        .getAnimations()
+        .every((animation) => animation.playState === "finished"),
+    );
     const power = await page.locator(".hotspot-power").boundingBox();
     await page
       .locator(".hotspot-power")

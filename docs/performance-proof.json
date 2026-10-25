@@ -1,0 +1,12 @@
+{
+  "packaged": true,
+  "backgroundFixtureMemoryBefore": "106.48 MB",
+  "backgroundStoppedAfterConfirmation": true,
+  "backgroundListenerReleased": true,
+  "normalCloseRefusalRespected": true,
+  "normalCloseEventuallyExited": true,
+  "windowListenerReleased": true,
+  "staleIdRejected": true,
+  "userAppsClosed": 0,
+  "permanentlyDeletedFiles": 0
+}
