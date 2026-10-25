@@ -257,6 +257,20 @@ function createCleaner({
             }
             if (!entry.isFile() || seen.has(filename)) continue;
             try {
+              const extension = path.extname(filename).toLowerCase();
+              if (
+                root.category === "temporary" &&
+                !TEMP_EXTENSIONS.has(extension)
+              )
+                continue;
+              if (root.category === "crash-dumps" && extension !== ".dmp")
+                continue;
+              const preliminary = await fs.lstat(filename);
+              if (
+                !preliminary.isFile() ||
+                !eligible(filename, root, preliminary)
+              )
+                continue;
               const metadata = await safeFile(filename, root);
               if (eligible(filename, root, metadata)) {
                 found.push(snapshot(filename, root, metadata));
@@ -331,7 +345,12 @@ function createCleaner({
         );
         if (pending.length > additions.length) coverage.limited = true;
         await save([...refreshed, ...additions]);
-        return { ...bin(), added: additions.length, coverage };
+        return {
+          ...bin(),
+          added: additions.length,
+          found: found.length,
+          coverage,
+        };
       }),
     reviewOldFiles: () =>
       run(async () => {

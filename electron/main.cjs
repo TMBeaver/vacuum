@@ -16,6 +16,8 @@ const { spawn } = require("node:child_process");
 const { createCleaner } = require("./cleaner.cjs");
 const { isDue } = require("./schedule.cjs");
 const { classifyScanResult } = require("./defender.cjs");
+const { chooseLane, inspectTaskbar } = require("./taskbar.cjs");
+let taskbarGeometry = null;
 
 let main,
   companion,
@@ -77,7 +79,11 @@ function saveSettings() {
 async function saveHistory() {
   await fs.writeFile(
     historyPath,
-    JSON.stringify({ lastRun: state.lastRun, wetResult: state.wetResult }),
+    JSON.stringify({
+      lastRun: state.lastRun,
+      wetResult: state.wetResult,
+      lastEmpty: state.lastEmpty,
+    }),
   );
 }
 function showMain() {
@@ -140,15 +146,26 @@ function updateTray() {
 }
 function showCompanion() {
   if (!settings.companion) return;
+  const display = screen.getPrimaryDisplay();
+  const taskbar = taskbarGeometry?.taskbar
+    ? screen.screenToDipRect(null, taskbarGeometry.taskbar)
+    : null;
+  const start = taskbarGeometry?.start
+    ? screen.screenToDipRect(null, taskbarGeometry.start)
+    : null;
+  const placement = chooseLane(display, taskbar, start);
+  state.companionPlacement = placement;
   if (!companion) {
-    const { workArea } = screen.getPrimaryDisplay();
     companion = new BrowserWindow({
-      width: 460,
-      height: 96,
-      x: workArea.x + 12,
-      y: workArea.y + workArea.height - 96,
+      width: placement.width,
+      height: placement.height,
+      x: placement.x,
+      y: placement.y,
       transparent: true,
       frame: false,
+      thickFrame: false,
+      hasShadow: false,
+      roundedCorners: false,
       resizable: false,
       alwaysOnTop: true,
       skipTaskbar: true,
@@ -161,18 +178,43 @@ function showCompanion() {
         nodeIntegration: false,
       },
     });
-    companion.setAlwaysOnTop(true, "floating");
+    companion.setAlwaysOnTop(true, "screen-saver");
     companion.setIgnoreMouseEvents(true, { forward: true });
     companion.loadFile(file("index.html"), { hash: "companion" });
     companion.webContents.on("did-finish-load", () => {
+      if (controller) {
+        companion.showInactive();
+        fitCompanion(placement);
+      }
       send();
-      companion.showInactive();
     });
     companion.on("closed", () => {
       companion = null;
     });
     secure(companion);
-  } else companion.showInactive();
+  } else {
+    companion.showInactive();
+    fitCompanion(placement);
+  }
+}
+function fitCompanion(placement) {
+  let width = placement.width,
+    height = placement.height;
+  // Windows may add fractional-DPI nonclient pixels to a newly shown popup.
+  // Measure the real native rectangle and shrink until it fits the intended lane.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    companion.setBounds({ x: placement.x, y: placement.y, width, height });
+    const actual = companion.getBounds();
+    const extraWidth = Math.max(0, actual.width - placement.width),
+      extraHeight = Math.max(0, actual.height - placement.height);
+    if (!extraWidth && !extraHeight) {
+      state.companionPlacement = { ...placement, ...actual };
+      return;
+    }
+    width = Math.max(1, width - extraWidth);
+    height = Math.max(1, height - extraHeight);
+  }
+  state.companionPlacement = { ...placement, ...companion.getBounds() };
 }
 function secure(w) {
   w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -270,17 +312,43 @@ async function startClean() {
   clearTimeout(dockTimer);
   controller = new AbortController();
   const active = controller;
-  state.phase = "cleaning";
-  state.message = "Looking for forgotten temporary files.";
+  state.phase = "departing";
+  state.message = "Leaving the dock. Preparing a real file scan.";
+  state.progress = { visited: 0, found: 0, bytes: 0 };
   state.coverage = null;
+  state.roundError = null;
   send();
-  showCompanion();
   try {
+    if (settings.companion) {
+      taskbarGeometry = await inspectTaskbar(active.signal);
+      if (!active.signal.aborted) showCompanion();
+    }
+    await new Promise((resolve) => {
+      if (active.signal.aborted) return resolve();
+      const stopped = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        active.signal.removeEventListener("abort", stopped);
+        resolve();
+      }, 1100);
+      active.signal.addEventListener("abort", stopped, { once: true });
+    });
+    state.phase = "cleaning";
+    state.message = "Looking for forgotten temporary files.";
+    send();
     const result = await cleaner.scan({ signal: active.signal });
     state.bin = await cleaner.getBin();
     state.coverage = result.coverage;
+    state.progress = {
+      visited: result.coverage.visited,
+      found: result.found ?? result.added,
+      bytes: result.bytes,
+    };
     if (settings.wet && !active.signal.aborted) {
       state.phase = "wet";
+      state.wetResult = null;
       send();
       state.wetResult = await wetScan(active.signal);
     }
@@ -290,14 +358,28 @@ async function startClean() {
       ? "Back at the dock. Collected files are still in the bin."
       : `Back at the dock. ${state.bin.count ? "Your bin is ready to review." : "Nothing disposable found this time."}`;
   } catch (e) {
-    state.message = `Cleaning stopped: ${e.message}`;
+    state.roundError = `Cleaning stopped: ${e.message}`;
+    state.message = state.roundError;
   } finally {
+    const roundCancelled = active.signal.aborted;
+    state.phase = "returning";
+    state.message =
+      "Returning to the station. Your collected files are waiting in the bin.";
+    send();
+    await new Promise((resolve) => setTimeout(resolve, 1800));
     controller = null;
     state.phase = "docked";
+    state.message =
+      state.roundError ||
+      (roundCancelled || state.coverage?.cancelled
+        ? "Round stopped. Back at the dock."
+        : state.bin.count
+          ? `${state.bin.count} files collected. Open the dust bin to recycle them.`
+          : "Back at the dock. No eligible leftovers found.");
     send();
     if (companion) {
       companion.webContents.send("vacuum:dock");
-      dockTimer = setTimeout(() => companion?.hide(), 1500);
+      dockTimer = setTimeout(() => companion?.hide(), 350);
     }
   }
 }
@@ -338,8 +420,14 @@ app.whenReady().then(async () => {
       : app.getPath("downloads"),
     trashItem: (p) => shell.trashItem(p),
     onProgress: (p) => {
+      state.progress = p;
       state.message = `Sweeping ${p.category === "crash-dumps" ? "crash dumps" : "temporary files"} · ${p.visited.toLocaleString()} checked · ${p.found.toLocaleString()} found`;
-      send();
+      for (const window of [main, companion])
+        if (window && !window.isDestroyed())
+          window.webContents.send("vacuum:progress", {
+            progress: p,
+            message: state.message,
+          });
     },
   });
   try {
@@ -410,6 +498,10 @@ app.whenReady().then(async () => {
           : [app.getAppPath(), "--background"],
       });
     await saveSettings();
+    if (Object.hasOwn(patch, "companion")) {
+      if (!settings.companion) companion?.hide();
+      else if (controller) showCompanion();
+    }
     send();
     return settings;
   });
@@ -426,10 +518,20 @@ app.whenReady().then(async () => {
     if (controller || state.phase !== "docked")
       throw new Error("Return to dock before emptying.");
     state.phase = "emptying";
+    const emptyStarted = Date.now();
     send();
     try {
       const result = await cleaner.emptyBin(ids(selection));
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.max(0, 900 - (Date.now() - emptyStarted))),
+      );
       state.bin = await cleaner.getBin();
+      state.lastEmpty = {
+        trashed: result.trashed,
+        bytes: result.bytes,
+        time: new Date().toISOString(),
+      };
+      await saveHistory();
       state.message = `${result.trashed} ${result.trashed === 1 ? "file" : "files"} sent to Recycle Bin.${result.skipped.length ? " Changed or inaccessible files were skipped." : ""}`;
       return result;
     } finally {

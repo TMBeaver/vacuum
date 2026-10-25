@@ -22,7 +22,9 @@ import {
   Info,
 } from "lucide-react";
 import RobotScene from "./RobotScene";
+import TaskbarCompanion from "./TaskbarCompanion";
 import "./style.css";
+import "./studio.css";
 
 const initial = {
   phase: "docked",
@@ -85,8 +87,9 @@ function Companion() {
   useEffect(() => {
     api.get().then(setS);
     const off = api.subscribe((next) => {
-        setS(next);
-        if (["cleaning", "wet"].includes(next.phase)) setDocking(false);
+        setS((previous) => ({ ...previous, ...next }));
+        if (["departing", "cleaning", "wet"].includes(next.phase))
+          setDocking(false);
       }),
       offDock = api.onDock(() => setDocking(true));
     return () => {
@@ -95,28 +98,11 @@ function Companion() {
     };
   }, []);
   return (
-    <button
-      onClick={() => api.window("show")}
-      title="Open Vacuum station"
-      aria-label="Open Vacuum station"
-      className={`companion ${s.settings.theme} ${s.phase === "wet" ? "wet" : ""} ${docking ? "docking" : ""}`}
+    <div
+      className={`companion ${s.settings.theme} ${docking ? "docking" : ""}`}
     >
-      <div className="mini-station" />
-      <div className="rover">
-        <i className="dust-trail" />
-        <div className="mini-robot">
-          <i />
-          <span />
-        </div>
-      </div>
-      <span className="companion-caption">
-        {docking
-          ? "Heading home"
-          : s.phase === "wet"
-            ? "Wet cleaning"
-            : "Tidying up"}
-      </span>
-    </button>
+      <TaskbarCompanion theme={s.settings.theme} phase={s.phase} />
+    </div>
   );
 }
 function App() {
@@ -128,7 +114,9 @@ function App() {
     [selected, setSelected] = useState(new Set()),
     [confirm, setConfirm] = useState(false),
     [skipped, setSkipped] = useState([]);
-  const active = ["cleaning", "wet"].includes(s.phase),
+  const active = ["departing", "cleaning", "wet", "returning"].includes(
+      s.phase,
+    ),
     busy = active || s.phase === "emptying",
     dark = s.settings.theme === "dark";
   useEffect(() => {
@@ -139,7 +127,9 @@ function App() {
         if (next.startupError) setError(next.startupError);
       })
       .catch((e) => setError(e.message));
-    return api.subscribe(setS);
+    return api.subscribe((next) =>
+      setS((previous) => ({ ...previous, ...next })),
+    );
   }, []);
   useEffect(() => {
     document.documentElement.dataset.theme = s.settings.theme;
@@ -183,9 +173,16 @@ function App() {
     }
   }
   async function change(p) {
+    const previous = s.settings;
+    setS((v) => ({ ...v, settings: { ...v.settings, ...p } }));
     await run(async () => {
-      const settings = await api.settings(p);
-      setS((v) => ({ ...v, settings }));
+      try {
+        const settings = await api.settings(p);
+        setS((v) => ({ ...v, settings }));
+      } catch (error) {
+        setS((v) => ({ ...v, settings: previous }));
+        throw error;
+      }
     });
   }
   function start() {
@@ -266,174 +263,149 @@ function App() {
             VACUUM ONE <span>·</span> {dark ? "GRAPHITE" : "PORCELAIN"}
           </span>
         </div>
-        <section className="living-room">
-          <div className="scene-copy">
+        <section className="robot-stage" aria-label="Vacuum controls">
+          <div className="stage-readout">
             <div className={`status-pill ${active ? "running" : ""}`}>
               <i />
-              {active
-                ? s.phase === "wet"
-                  ? "WET CLEANING"
-                  : "OUT CLEANING"
-                : "AT THE DOCK"}
+              {s.phase === "departing"
+                ? "LEAVING THE STATION"
+                : s.phase === "returning"
+                  ? "COMING HOME"
+                  : s.phase === "wet"
+                    ? "WET CLEANING"
+                    : s.phase === "cleaning"
+                      ? "OUT CLEANING"
+                      : s.phase === "emptying"
+                        ? "EMPTYING THE BIN"
+                        : "DOCKED & READY"}
             </div>
             <h1>
-              {active ? (
-                <>
-                  A little work.
-                  <br />A lighter computer.
-                </>
-              ) : (
-                <>
-                  Less clutter.
-                  <br />
-                  More breathing room.
-                </>
-              )}
+              {s.phase === "returning"
+                ? "Homeward bound."
+                : active
+                  ? "On a little cleaning round."
+                  : panel === "bin"
+                    ? "Let’s lift the lid."
+                    : "Ready for a round."}
             </h1>
             <p>
               {active
-                ? "Your little helper is on its rounds. You can carry on with your day."
-                : "Meet your computer’s quiet little helper.\nReady for a fresh start whenever you are."}
+                ? s.message
+                : "Press the controls on your vacuum.\nDrag anywhere around it to take a look."}
             </p>
           </div>
-          <div className={`scene-wrap ${active ? "moving" : ""}`}>
-            <div className="floor-rings">
-              <i />
-              <i />
-              <i />
-            </div>
-            <RobotScene
-              theme={s.settings.theme}
-              wet={s.settings.wet}
-              active={active}
-              onStart={start}
-            />
-            <span className="dock-label">
-              <House size={12} />
-              {active ? "STATION ON STANDBY" : "HOME, SWEET HOME"}
-            </span>
-            <div className="finish-label">
-              <i />
-              {dark ? "Anodized graphite" : "Soft porcelain"}
-              <span>01 / {dark ? "DARK" : "LIGHT"}</span>
-            </div>
+          <div className="floor-rings">
+            <i />
+            <i />
+            <i />
           </div>
-          <aside className="controls">
-            <div className="control-heading">
-              <span className="eyebrow">YOUR NEXT CLEAN</span>
-              <span className="tiny-led" />
-            </div>
-            <h2>{active ? "Making the rounds." : "Good to go."}</h2>
-            <p className="control-caption">
-              {active
-                ? "Looking after the little things."
-                : "A fresh sweep, at your command."}
-            </p>
-            <div className="mode-picker" aria-label="Cleaning mode">
-              <button
-                disabled={busy}
-                className={!s.settings.wet ? "selected" : ""}
-                onClick={() => change({ wet: false })}
-              >
-                <Wind size={19} />
-                <span>
-                  Vacuum<small>Everyday clutter</small>
-                </span>
-                {!s.settings.wet && <Check size={14} />}
-              </button>
-              <button
-                disabled={busy}
-                className={s.settings.wet ? "selected" : ""}
-                onClick={() => change({ wet: true })}
-              >
-                <Droplets size={19} />
-                <span>
-                  Vacuum + mop<small>Clutter & threat scan</small>
-                </span>
-                {s.settings.wet && <Check size={14} />}
-              </button>
-            </div>
-            <button
-              className={`start-button ${active ? "active" : ""}`}
-              disabled={working || s.phase === "emptying" || !!s.startupError}
-              onClick={start}
-            >
-              {active ? <House size={20} /> : <Power size={20} />}
-              <span>{active ? "Return to dock" : "Start cleaning"}</span>
-              <span className="key-hint" aria-hidden="true">
-                ↗
+          <RobotScene
+            theme={s.settings.theme}
+            wet={s.settings.wet}
+            phase={s.phase}
+            active={active}
+            binOpen={panel === "bin"}
+            binCount={s.bin.count}
+            auto={s.settings.auto}
+            disabled={
+              working ||
+              s.phase === "emptying" ||
+              s.phase === "returning" ||
+              !!s.startupError
+            }
+            onAction={(action) => {
+              if (action === "power") start();
+              if (action === "bin" && !busy) openPanel("bin");
+              if (action === "mop" && !busy) change({ wet: !s.settings.wet });
+              if (action === "auto" && !busy)
+                change({ auto: !s.settings.auto });
+              if (action === "dock" || action === "station") {
+                if (active) run(() => api.stop());
+                else if (action === "station") openPanel("settings");
+              }
+            }}
+          />
+          <span className="material-signature">
+            <i />
+            {dark
+              ? "Graphite / anodized finish"
+              : "Porcelain / soft ceramic finish"}
+          </span>
+          <span className="inspect-hint">
+            DRAG TO EXPLORE <span>·</span> PRESS TO INTERACT
+          </span>
+          {active && (
+            <div className="round-readout">
+              <span>
+                {s.progress?.visited?.toLocaleString() || "0"}
+                <small>files checked</small>
               </span>
-            </button>
-            <p className="start-note">
-              {s.settings.wet
-                ? "Wet mode checks Temp & Downloads with Defender."
-                : "Only known leftovers. Your personal files stay put."}
-            </p>
-            <div className="schedule">
-              <div className="schedule-top">
-                <Clock3 size={17} />
-                <span>Daily autoclean</span>
-                <Toggle
-                  label="Daily autoclean"
-                  checked={s.settings.auto}
-                  onChange={(auto) => change({ auto })}
-                />
-              </div>
-              <div className="schedule-bottom">
-                <span>
-                  {s.settings.auto
-                    ? "A little tidy, every day at"
-                    : "Ready when you need it"}
-                </span>
-                <button onClick={() => openPanel("settings")}>
-                  {s.settings.hour}
-                  <ChevronRight size={12} />
-                </button>
-              </div>
+              <span>
+                {s.progress?.found?.toLocaleString() || "0"}
+                <small>leftovers found</small>
+              </span>
             </div>
-          </aside>
+          )}
         </section>
-        <section className="bin-rail">
+        <section className="station-strip">
           <button
-            className="bin-visual"
-            aria-label="Open dust bin"
+            className="station-detail bin-detail"
+            aria-label="Review collected files"
             onClick={() => openPanel("bin")}
           >
-            <div className="bin-lid" />
-            <div className="bin-container">
-              <i className={s.bin.count ? "has-dust" : ""} />
-              <span />
-              <span />
-              <span />
-            </div>
+            <span className="strip-symbol">
+              <Trash2 size={20} />
+            </span>
+            <span className="bin-copy">
+              <small>DUST BIN</small>
+              <strong>
+                {s.bin.count ? bytes(s.bin.bytes) : "Fresh & empty"}
+              </strong>
+              <em>
+                {s.bin.count
+                  ? `${s.bin.count} ${s.bin.count === 1 ? "file" : "files"} collected · waiting to empty`
+                  : "Collected files wait for you here"}
+              </em>
+            </span>
+            <ChevronRight size={14} />
           </button>
-          <div className="bin-copy">
-            <span className="eyebrow">THE DUST BIN</span>
-            <h3>
-              {s.bin.count
-                ? `${bytes(s.bin.bytes)} tucked away.`
-                : "A clean slate."}
-            </h3>
-            <p>
-              {s.bin.count
-                ? `${s.bin.count.toLocaleString()} ${s.bin.count === 1 ? "file" : "files"} collected. Nothing deleted yet.`
-                : "Nothing collected yet. Let’s keep it that way."}
-            </p>
-          </div>
-          <div className="bin-buttons">
-            <button
-              className="text-button old-button"
-              onClick={() => openPanel("old")}
-            >
-              <FolderClock size={16} />
-              Forgotten files
-              <ArrowUpRight size={14} />
-            </button>
-            <button className="outline-button" onClick={() => openPanel("bin")}>
-              Open dust bin
-              <ChevronRight size={15} />
-            </button>
-          </div>
+          <button
+            className="station-detail"
+            onClick={() => openPanel("settings")}
+            aria-label="Daily cleaning settings"
+          >
+            <span className="strip-symbol">
+              <Clock3 size={20} />
+            </span>
+            <span>
+              <small>DAILY ROUTINE</small>
+              <strong>
+                {s.settings.auto
+                  ? `Every day · ${s.settings.hour}`
+                  : "On your terms"}
+              </strong>
+              <em>
+                {s.settings.auto
+                  ? "Returns here after each round"
+                  : "Press the clock on your vacuum to enable"}
+              </em>
+            </span>
+          </button>
+          <button
+            className="station-detail"
+            onClick={() => openPanel("old")}
+            aria-label="Forgotten files"
+          >
+            <span className="strip-symbol">
+              <FolderClock size={20} />
+            </span>
+            <span>
+              <small>FORGOTTEN FILES</small>
+              <strong>A second look</strong>
+              <em>Old Downloads, chosen by you</em>
+            </span>
+            <ArrowUpRight size={14} />
+          </button>
         </section>
         <footer>
           <span className="live-message" role="status">
@@ -441,9 +413,11 @@ function App() {
             {s.message}
           </span>
           <span className="footer-meta">
-            {s.lastRun
-              ? `LAST ROUND ${new Date(s.lastRun).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-              : "DESIGNED TO DO LESS. BETTER."}
+            {s.lastEmpty?.trashed
+              ? `${s.lastEmpty.trashed} FILES RECYCLED · ${bytes(s.lastEmpty.bytes)}`
+              : s.lastRun
+                ? `LAST ROUND ${new Date(s.lastRun).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                : "DESIGNED TO DO LESS. BETTER."}
           </span>
         </footer>
         {s.wetResult && (
@@ -558,9 +532,7 @@ function App() {
                 <div className="setting-row">
                   <div>
                     <h3>Desktop companion</h3>
-                    <p>
-                      A little robot travels above your taskbar while it cleans.
-                    </p>
+                    <p>Small looping passes in the taskbar, left of Start.</p>
                   </div>
                   <Toggle
                     label="Desktop companion"

@@ -15,7 +15,11 @@ contextBridge.exposeInMainWorld(
     subscribe: (callback) => {
       const fn = (_e, s) => callback(s);
       ipcRenderer.on("vacuum:state", fn);
-      return () => ipcRenderer.removeListener("vacuum:state", fn);
+      ipcRenderer.on("vacuum:progress", fn);
+      return () => {
+        ipcRenderer.removeListener("vacuum:state", fn);
+        ipcRenderer.removeListener("vacuum:progress", fn);
+      };
     },
     onDock: (callback) => {
       ipcRenderer.on("vacuum:dock", callback);

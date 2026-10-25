@@ -1,21 +1,25 @@
 # vacuum
 
-A quiet little robot vacuum for your Windows computer. Real 3D hardware, a dock in the system tray, and a little companion that travels above the taskbar while it works.
+A quiet little robot vacuum for your Windows computer. Real 3D hardware, a dock in the system tray, and a little companion that drives small looping passes in the taskbar space left of Start while it works.
 
 ![Vacuum in graphite](docs/vacuum-dark.png)
 
 ## Use it
 
-Install **Vacuum Setup 0.1.0.exe** from the private repository's Releases page, or run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray; right-click its tray icon to quit.
+Install **Vacuum Setup 0.2.0.exe** from the private repository's Releases page, or run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray; right-click its tray icon to quit.
 
-- Press the robot or **Start cleaning** to collect known leftovers into its dust bin.
+- Press the **power button on the 3D robot** to collect known leftovers into its dust bin.
 - Open the bin to review individual files. **Empty selected** asks for confirmation and sends those files to Windows Recycle Bin. Scanning itself never moves files, and the bin never empties automatically.
-- **Vacuum + mop** adds Microsoft Defender scans of temporary files and Downloads, with a blue companion trail. The result distinguishes completion, cancellation, and an unavailable/unsuccessful scan. Open Windows Security from the result for further action.
+- Press the **droplet button on the robot** to attach the mop. Wet cleaning adds Microsoft Defender scans of temporary files and Downloads, with a blue companion trail. The result distinguishes completion, cancellation, and an unavailable/unsuccessful scan. Open Windows Security from the result for further action.
 - **Forgotten files** suggests Downloads unchanged for 180 days. Select only files you no longer need. They require explicit collection and a separate empty-bin action.
 - Enable **Daily autoclean**, choose a local time, and enable **Start with Windows** to keep the routine running. Vacuum checks every 30 seconds while in the tray and catches up a missed daily round after launch or resume. It does not wake a shut-down computer. Automatic rounds fill the bin; they never empty it. Both automation and login startup are off on first launch.
-- Switch themes for a graphite or porcelain robot. Disable the desktop companion in Settings if you prefer the tray alone. Its transparent window sits above the work-area edge and passes mouse clicks through to your apps.
+- Switch themes for a graphite or porcelain robot. Disable the desktop companion in Settings if you prefer the tray alone. The small companion follows looping passes and rounded U-turns in free taskbar space left of the actual Start button. Its transparent window passes all clicks through. If there is no safe space left of Start, it uses a small fallback lane just above the taskbar.
 
 ![Vacuum in porcelain](docs/vacuum-light.png)
+
+## The robot is the interface
+
+Drag around the model to inspect it. Its power button starts a round; the home button or the dock recalls it. Press the front hatch to open the dust cassette and review or empty it. The droplet button attaches the mop, and the clock enables daily rounds. Departure, working, hatch opening, cassette emptying and docking have separate physical animations. Scan counters come from the actual file walk. Wet-mode changes keep the existing 3D scene and camera.
 
 ## What gets collected
 
