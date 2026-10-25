@@ -23,6 +23,7 @@ const { createBrowserGuard } = require("./browser-cache.cjs");
 const { createPerformance } = require("./performance.cjs");
 const { createStartup, STARTUP_NAME } = require("./startup.cjs");
 const { createTrayTemplate } = require("./tray-menu.cjs");
+const { trayPopupBounds } = require("./tray-popup.cjs");
 let performanceReview;
 let startupService;
 if (process.platform === "win32") app.setAppUserModelId(STARTUP_NAME);
@@ -31,6 +32,7 @@ let taskbarGeometry = null;
 let layoutTimer, layoutProbe;
 
 let main,
+  trayPopup,
   companion,
   tray,
   cleaner,
@@ -70,7 +72,7 @@ const locked = app.requestSingleInstanceLock();
 if (!locked) app.quit();
 const file = (name) => path.join(__dirname, "..", "dist", name);
 const send = () => {
-  for (const w of [main, companion])
+  for (const w of [main, companion, trayPopup])
     if (w && !w.isDestroyed())
       w.webContents.send("vacuum:state", { ...state, settings });
   updateTray();
@@ -139,9 +141,63 @@ function icon() {
 }
 let panelRequestId = 0;
 function openFromTray(panel) {
+  trayPopup?.hide();
   state.panelRequest = { id: ++panelRequestId, panel };
   showMain();
   send();
+}
+let trayBlurAt = 0;
+function toggleTrayRobot(bounds) {
+  if (trayPopup?.isVisible() || Date.now() - trayBlurAt < 180) {
+    trayPopup?.hide();
+    return;
+  }
+  const show = () => {
+    const iconBounds = bounds?.width ? bounds : tray.getBounds();
+    const display = screen.getDisplayNearestPoint({
+      x: Math.round(iconBounds.x),
+      y: Math.round(iconBounds.y),
+    });
+    trayPopup.setBounds(trayPopupBounds(iconBounds, display.workArea));
+    trayPopup.show();
+    trayPopup.focus();
+    send();
+  };
+  if (!trayPopup) {
+    trayPopup = new BrowserWindow({
+      width: 440,
+      height: 500,
+      show: false,
+      frame: false,
+      resizable: false,
+      thickFrame: false,
+      skipTaskbar: true,
+      alwaysOnTop: true,
+      backgroundColor: settings.theme === "dark" ? "#202320" : "#efeee9",
+      webPreferences: {
+        preload: path.join(__dirname, "preload.cjs"),
+        contextIsolation: true,
+        sandbox: true,
+        nodeIntegration: false,
+      },
+    });
+    secure(trayPopup);
+    trayPopup.loadFile(file("index.html"), { hash: "tray" });
+    trayPopup.once("ready-to-show", show);
+    trayPopup.on("blur", () => {
+      trayBlurAt = Date.now();
+      trayPopup?.hide();
+    });
+    trayPopup.on("close", (event) => {
+      if (!quitting) {
+        event.preventDefault();
+        trayPopup.hide();
+      }
+    });
+    trayPopup.on("closed", () => {
+      trayPopup = null;
+    });
+  } else show();
 }
 function changeFromTray(patch) {
   return applySettings(patch).catch((error) => {
@@ -206,6 +262,10 @@ function applySettings(patch) {
       if (!settings.companion) companion?.hide();
       else if (controller) await placeCompanion(controller.signal);
     }
+    if (Object.hasOwn(patch, "theme"))
+      trayPopup?.setBackgroundColor(
+        settings.theme === "dark" ? "#202320" : "#efeee9",
+      );
     send();
     return settings;
   });
@@ -304,6 +364,7 @@ async function placeCompanion(signal) {
   }
 }
 function layoutChanged() {
+  trayPopup?.hide();
   clearTimeout(layoutTimer);
   layoutProbe?.abort();
   taskbarGeometry = null;
@@ -590,7 +651,7 @@ app.whenReady().then(async () => {
   });
   tray = new Tray(icon());
   tray.on("double-click", showMain);
-  tray.on("click", () => tray.popUpContextMenu());
+  tray.on("click", (_event, bounds) => toggleTrayRobot(bounds));
   updateTray();
   ipcMain.handle("vacuum:get", async () => {
     await refreshStartup();
@@ -763,9 +824,15 @@ app.whenReady().then(async () => {
       }),
   );
   ipcMain.handle("vacuum:window", (_e, action) => {
+    if (action === "hide-tray") trayPopup?.hide();
     if (action === "minimize") main.minimize();
     if (action === "close") main.hide();
     if (action === "show") showMain();
+  });
+  ipcMain.handle("vacuum:panel", (_e, name) => {
+    if (![null, "bin", "settings", "old", "performance"].includes(name))
+      throw Error("Unknown station view.");
+    openFromTray(name);
   });
   timer = setInterval(scheduleTick, 30000);
   powerMonitor.on("resume", scheduleTick);

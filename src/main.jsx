@@ -22,6 +22,7 @@ import {
   Info,
 } from "lucide-react";
 import RobotScene from "./RobotScene";
+import TrayRobot from "./TrayRobot";
 import TaskbarCompanion from "./TaskbarCompanion";
 import FileReview from "./FileReview";
 import PerformanceReview from "./PerformanceReview";
@@ -288,22 +289,6 @@ function App() {
         </div>
         <section className="robot-stage" aria-label="Vacuum controls">
           <div className="stage-readout">
-            <div className={`status-pill ${active ? "running" : ""}`}>
-              <i />
-              {s.phase === "departing"
-                ? "LEAVING THE STATION"
-                : s.phase === "returning"
-                  ? "COMING HOME"
-                  : s.phase === "wet"
-                    ? "Security scan"
-                    : s.phase === "cleaning"
-                      ? "Cleaning"
-                      : s.phase === "compacting"
-                        ? "Saving space"
-                        : s.phase === "emptying"
-                          ? "Emptying the bin"
-                          : "Docked"}
-            </div>
             <h1>
               {s.phase === "returning"
                 ? "Returning to the dock"
@@ -955,5 +940,11 @@ function App() {
   );
 }
 createRoot(document.getElementById("root")).render(
-  location.hash === "#companion" ? <Companion /> : <App />,
+  location.hash === "#companion" ? (
+    <Companion />
+  ) : location.hash === "#tray" ? (
+    <TrayRobot api={api} initial={initial} />
+  ) : (
+    <App />
+  ),
 );

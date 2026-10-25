@@ -1,6 +1,6 @@
 {
   "packaged": true,
-  "leftClickRequestsTrayMenuWithoutShowingStation": true,
+  "leftClickShows3DRobot": true,
   "hiddenCleaningAndRecall": true,
   "modeChangesPersist": true,
   "binOldPerformanceAndSettingsRoutes": true,

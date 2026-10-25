@@ -1,0 +1,16 @@
+{
+  "packaged": true,
+  "nativeCompactPopup": true,
+  "boundsFitWorkArea": true,
+  "threePhysicalControls": true,
+  "bothThemesKeepSameCanvas": true,
+  "powerMeshStartsRealScan": true,
+  "homeRecalls": true,
+  "binReviewedAndConfirmedInPopup": true,
+  "unconfirmedFileUnchanged": true,
+  "fixtureSentToRecycleBin": true,
+  "mainStationStayedHidden": true,
+  "cleaningBadgeRemoved": true,
+  "rendererErrors": 0,
+  "permanentlyDeletedFiles": 0
+}

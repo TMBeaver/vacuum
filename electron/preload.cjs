@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld(
     performanceAction: (id, mode) =>
       ipcRenderer.invoke("vacuum:performance-action", id, mode),
     window: (action) => ipcRenderer.invoke("vacuum:window", action),
+    panel: (name) => ipcRenderer.invoke("vacuum:panel", name),
     subscribe: (callback) => {
       const fn = (_e, s) => callback(s);
       ipcRenderer.on("vacuum:state", fn);

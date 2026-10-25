@@ -31,6 +31,7 @@ export default function RobotScene({
   binCount = 0,
   auto = false,
   mini = false,
+  compact = false,
   disabled = false,
   onAction = () => {},
 }) {
@@ -161,8 +162,11 @@ export default function RobotScene({
           (-(e.clientY - r.top) / r.height) * 2 + 1,
         );
         ray.setFromCamera(pointer, camera);
-        return ray.intersectObjects(model.interactive, false)[0]?.object
+        const action = ray.intersectObjects(model.interactive, false)[0]?.object
           .userData.action;
+        return !compact || ["power", "dock", "bin"].includes(action)
+          ? action
+          : undefined;
       };
       const pointerDown = (e) => {
           down.set(e.clientX, e.clientY);
@@ -407,7 +411,7 @@ export default function RobotScene({
       renderer?.dispose();
       setFailed(true);
     }
-  }, [mini]);
+  }, [mini, compact]);
   const names = {
     power: active ? "Return to dock" : "Start cleaning",
     bin: "Open dust bin",
@@ -431,71 +435,73 @@ export default function RobotScene({
       <div className="canvas-mount" ref={canvasHost} />
       {!mini &&
         !failed &&
-        Object.keys(labels).map((action) => (
-          <button
-            key={action}
-            ref={(el) => {
-              hotspots.current[action] = el;
-            }}
-            className={`robot-hotspot hotspot-${action} ${hover === action ? "hovered" : ""}`}
-            aria-label={names[action]}
-            aria-pressed={
-              action === "mop" ? wet : action === "auto" ? auto : undefined
-            }
-            disabled={
-              disabled ||
-              (active && !["power", "dock", "station"].includes(action))
-            }
-            onPointerEnter={() => setHover(action)}
-            onPointerMove={() => {
-              renderActivity.current = performance.now() + 1500;
-            }}
-            onPointerDown={() => {
-              pressed.current = { action, until: performance.now() + 220 };
-            }}
-            onPointerLeave={() => setHover(null)}
-            onFocus={() => setHover(action)}
-            onBlur={() => setHover(null)}
-            onClick={() => current.current.onAction(action)}
-          >
-            <span className="hotspot-target" />
-            <svg className="hotspot-leader" aria-hidden="true">
-              <path d={leaders[action]} />
-            </svg>
-            <span className="hotspot-caption">
-              <b>
-                {action === "power"
-                  ? active
-                    ? "Go home"
-                    : "Power"
-                  : labels[action]}
-              </b>
-              <small>
-                {action === "power"
-                  ? active
-                    ? "Return to dock"
-                    : "Press to clean"
-                  : action === "bin"
-                    ? binCount
-                      ? `${binCount} collected · press to empty`
-                      : "Lift the lid"
-                    : action === "mop"
-                      ? wet
-                        ? "Mop attached"
-                        : "Attach the mop"
-                      : action === "auto"
-                        ? auto
-                          ? "Daily rounds on"
-                          : "Daily rounds off"
-                        : action === "performance"
-                          ? "Apps and ports"
-                          : action === "dock"
-                            ? "Return home"
-                            : "Schedule & settings"}
-              </small>
-            </span>
-          </button>
-        ))}
+        (compact ? ["power", "dock", "bin"] : Object.keys(labels)).map(
+          (action) => (
+            <button
+              key={action}
+              ref={(el) => {
+                hotspots.current[action] = el;
+              }}
+              className={`robot-hotspot hotspot-${action} ${hover === action ? "hovered" : ""}`}
+              aria-label={names[action]}
+              aria-pressed={
+                action === "mop" ? wet : action === "auto" ? auto : undefined
+              }
+              disabled={
+                disabled ||
+                (active && !["power", "dock", "station"].includes(action))
+              }
+              onPointerEnter={() => setHover(action)}
+              onPointerMove={() => {
+                renderActivity.current = performance.now() + 1500;
+              }}
+              onPointerDown={() => {
+                pressed.current = { action, until: performance.now() + 220 };
+              }}
+              onPointerLeave={() => setHover(null)}
+              onFocus={() => setHover(action)}
+              onBlur={() => setHover(null)}
+              onClick={() => current.current.onAction(action)}
+            >
+              <span className="hotspot-target" />
+              <svg className="hotspot-leader" aria-hidden="true">
+                <path d={leaders[action]} />
+              </svg>
+              <span className="hotspot-caption">
+                <b>
+                  {action === "power"
+                    ? active
+                      ? "Go home"
+                      : "Power"
+                    : labels[action]}
+                </b>
+                <small>
+                  {action === "power"
+                    ? active
+                      ? "Return to dock"
+                      : "Press to clean"
+                    : action === "bin"
+                      ? binCount
+                        ? `${binCount} collected · press to empty`
+                        : "Lift the lid"
+                      : action === "mop"
+                        ? wet
+                          ? "Mop attached"
+                          : "Attach the mop"
+                        : action === "auto"
+                          ? auto
+                            ? "Daily rounds on"
+                            : "Daily rounds off"
+                          : action === "performance"
+                            ? "Apps and ports"
+                            : action === "dock"
+                              ? "Return home"
+                              : "Schedule & settings"}
+                </small>
+              </span>
+            </button>
+          ),
+        )}
       {failed && (
         <div className="scene-fallback">
           <p>3D rendering is unavailable on this device.</p>

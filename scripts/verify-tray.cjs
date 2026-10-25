@@ -41,32 +41,33 @@ async function poll(read, predicate, label) {
         global.fixtureTrayMenu = menu;
         return native.call(this, menu);
       };
-      Tray.prototype.popUpContextMenu = function () {
-        global.fixtureTrayPopupRequested = true;
-      };
     });
     await page.evaluate(() => window.vacuum.settings({}));
     assert.equal(
       await app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()
-          .find((w) => !w.webContents.getURL().endsWith("#companion"))
+          .find(
+            (w) =>
+              !w.webContents.getURL().endsWith("#companion") &&
+              !w.webContents.getURL().endsWith("#tray"),
+          )
           .isVisible(),
       ),
       false,
     );
+    const popupCreated = app.waitForEvent("window");
     await app.evaluate(() => global.fixtureTray.emit("click"));
-    assert.equal(
-      await app.evaluate(() => global.fixtureTrayPopupRequested),
-      true,
-    );
+    const popup = await popupCreated;
+    await popup.locator(".tray-robot .robot-scene canvas").waitFor();
     assert.equal(
       await app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()
-          .find((w) => !w.webContents.getURL().endsWith("#companion"))
+          .find((w) => w.webContents.getURL().endsWith("#tray"))
           .isVisible(),
       ),
-      false,
+      true,
     );
+    await popup.evaluate(() => window.vacuum.window("hide-tray"));
     async function click(id) {
       await app.evaluate((_, id) => {
         const item = global.fixtureTrayMenu.getMenuItemById(id);
@@ -97,7 +98,11 @@ async function poll(read, predicate, label) {
     assert.equal(
       await app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()
-          .find((w) => !w.webContents.getURL().endsWith("#companion"))
+          .find(
+            (w) =>
+              !w.webContents.getURL().endsWith("#companion") &&
+              !w.webContents.getURL().endsWith("#tray"),
+          )
           .isVisible(),
       ),
       false,
@@ -129,7 +134,9 @@ async function poll(read, predicate, label) {
       () =>
         app.evaluate(({ BrowserWindow }) => {
           const w = BrowserWindow.getAllWindows().find(
-            (w) => !w.webContents.getURL().endsWith("#companion"),
+            (w) =>
+              !w.webContents.getURL().endsWith("#companion") &&
+              !w.webContents.getURL().endsWith("#tray"),
           );
           return w.isVisible() && !w.isMinimized();
         }),
@@ -159,7 +166,7 @@ async function poll(read, predicate, label) {
     assert.deepEqual(errors, []);
     const report = {
       packaged,
-      leftClickRequestsTrayMenuWithoutShowingStation: true,
+      leftClickShows3DRobot: true,
       hiddenCleaningAndRecall: true,
       modeChangesPersist: true,
       binOldPerformanceAndSettingsRoutes: true,
