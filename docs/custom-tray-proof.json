@@ -1,0 +1,17 @@
+{
+  "packaged": true,
+  "nativeRightClickOpensCustomPanel": true,
+  "noNativeMenu": true,
+  "fullRobotVisible": true,
+  "fixedFooter": true,
+  "switchesAndThemesPersist": true,
+  "startsAndRecallsNativeCleaner": true,
+  "binReviewInPopup": true,
+  "stationRoutes": true,
+  "disabledActionsValidatedInMain": true,
+  "escapeAndKeyboardReopen": true,
+  "reducedMotion": true,
+  "customQuitWorks": true,
+  "fixtureRetained": true,
+  "rendererErrors": 0
+}

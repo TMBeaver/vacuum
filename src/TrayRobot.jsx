@@ -3,12 +3,14 @@ import { ArrowUpRight, X, ArrowLeft, Droplets } from "lucide-react";
 import RobotScene from "./RobotScene";
 import FileReview from "./FileReview";
 import EmptyProgress from "./EmptyProgress";
+import TrayMenu from "./TrayMenu";
 import { formatSize } from "./format-size.mjs";
 import "./tray-robot.css";
 
 export default function TrayRobot({ api, initial }) {
   const [state, setState] = useState(initial);
   const [binOpen, setBinOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [confirm, setConfirm] = useState(false);
   const [working, setWorking] = useState(false);
@@ -30,19 +32,27 @@ export default function TrayRobot({ api, initial }) {
     document.documentElement.dataset.theme = state.settings.theme;
   }, [state.settings.theme]);
   useEffect(() => {
-    api.trayView?.(binOpen)?.catch((e) => setError(e.message));
+    if (state.trayMenuRequest) {
+      setBinOpen(false);
+      setConfirm(false);
+      setMenuOpen(true);
+    }
+  }, [state.trayMenuRequest]);
+  useEffect(() => {
+    api.trayView?.(binOpen || menuOpen)?.catch((e) => setError(e.message));
     if (binOpen) document.querySelector(".tray-bin button")?.focus();
     const key = (event) => {
       if (event.key === "Escape") {
         if (binOpen) {
           setBinOpen(false);
           setConfirm(false);
-        } else api.window("hide-tray");
+        } else if (menuOpen) setMenuOpen(false);
+        else api.window("hide-tray");
       }
     };
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [binOpen]);
+  }, [binOpen, menuOpen]);
   async function run(action) {
     setWorking(true);
     setError("");
@@ -63,14 +73,37 @@ export default function TrayRobot({ api, initial }) {
       setSkipped([]);
       setReceipt(null);
       setConfirm(false);
+      setMenuOpen(false);
       setBinOpen(true);
     }
   }
   return (
-    <div className={`tray-robot ${binOpen ? "has-bin" : ""}`}>
+    <div className={`tray-robot ${binOpen || menuOpen ? "has-bin" : ""}`}>
       <header className="tray-robot-header">
         <strong>vacuum</strong>
         <div>
+          <button
+            className="icon-button"
+            aria-label="Vacuum menu"
+            aria-expanded={menuOpen}
+            onClick={() => {
+              setBinOpen(false);
+              setConfirm(false);
+              setMenuOpen(!menuOpen);
+            }}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <circle cx="5" cy="12" r="1.5" />
+              <circle cx="12" cy="12" r="1.5" />
+              <circle cx="19" cy="12" r="1.5" />
+            </svg>
+          </button>
           <button
             className="icon-button"
             aria-label={
@@ -129,6 +162,15 @@ export default function TrayRobot({ api, initial }) {
         <p className="tray-robot-error" role="alert">
           {error || state.startupError}
         </p>
+      )}
+      {menuOpen && (
+        <TrayMenu
+          state={state}
+          working={working}
+          onAction={(id) => run(() => api.trayAction(id))}
+          onBin={() => action("bin")}
+          onClose={() => setMenuOpen(false)}
+        />
       )}
       {binOpen && (
         <section

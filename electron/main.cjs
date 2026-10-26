@@ -3,7 +3,6 @@ const {
   BrowserWindow,
   ipcMain,
   Tray,
-  Menu,
   nativeImage,
   shell,
   screen,
@@ -73,8 +72,7 @@ if (!locked) app.quit();
 const file = (name) => path.join(__dirname, "..", "dist", name);
 const send = () => {
   for (const w of [main, companion, trayPopup])
-    if (w && !w.isDestroyed())
-      w.webContents.send("vacuum:state", { ...state, settings });
+    if (w && !w.isDestroyed()) w.webContents.send("vacuum:state", snapshot());
   updateTray();
 };
 async function refreshStartup() {
@@ -158,12 +156,16 @@ function resizeTrayRobot() {
   });
   trayPopup.setBounds(trayPopupBounds(anchor, display.workArea, trayExpanded));
 }
-function toggleTrayRobot(bounds) {
-  if (trayPopup?.isVisible() || Date.now() - trayBlurAt < 180) {
+function toggleTrayRobot(bounds, menu = false) {
+  if (!menu && (trayPopup?.isVisible() || Date.now() - trayBlurAt < 180)) {
     trayPopup?.hide();
     return;
   }
   const show = () => {
+    if (menu) {
+      state.trayMenuRequest = (state.trayMenuRequest || 0) + 1;
+      trayExpanded = true;
+    }
     trayAnchor = bounds?.width ? bounds : tray.getBounds();
     resizeTrayRobot();
     trayPopup.show();
@@ -206,34 +208,38 @@ function toggleTrayRobot(bounds) {
     });
   } else show();
 }
-function changeFromTray(patch) {
-  return applySettings(patch).catch((error) => {
-    state.message = `Settings could not be saved: ${error.message}`;
-    openFromTray("settings");
+function trayActions() {
+  return createTrayTemplate({
+    state,
+    settings,
+    running: !!controller,
+    start: startClean,
+    stop: () => controller?.abort(),
+    open: openFromTray,
+    change: applySettings,
+    quit: () => {
+      quitting = true;
+      app.quit();
+    },
   });
+}
+function snapshot() {
+  const actions = trayActions().flatMap((item) => item.submenu || item);
+  return {
+    ...state,
+    settings,
+    trayActions: actions
+      .filter((item) => item.id)
+      .map(({ click, ...item }) => item),
+  };
 }
 function updateTray() {
   if (!tray) return;
   tray.setToolTip(
     `Vacuum · ${state.phase === "docked" ? "At the station" : state.message}`,
   );
-  tray.setContextMenu(
-    Menu.buildFromTemplate(
-      createTrayTemplate({
-        state,
-        settings,
-        running: !!controller,
-        start: startClean,
-        stop: () => controller?.abort(),
-        open: openFromTray,
-        change: changeFromTray,
-        quit: () => {
-          quitting = true;
-          app.quit();
-        },
-      }),
-    ),
-  );
+  // Let right-click open the themed renderer instead of the native OS menu.
+  tray.setContextMenu(null);
 }
 let settingsUpdate = Promise.resolve();
 function applySettings(patch) {
@@ -684,10 +690,19 @@ app.whenReady().then(async () => {
   tray = new Tray(icon());
   tray.on("double-click", showMain);
   tray.on("click", (_event, bounds) => toggleTrayRobot(bounds));
+  tray.on("right-click", (_event, bounds) => toggleTrayRobot(bounds, true));
   updateTray();
   ipcMain.handle("vacuum:get", async () => {
     await refreshStartup();
-    return { ...state, settings };
+    return snapshot();
+  });
+  ipcMain.handle("vacuum:tray-action", async (_event, id) => {
+    const action = trayActions()
+      .flatMap((item) => item.submenu || item)
+      .find((item) => item.id === id);
+    if (!action || action.enabled === false)
+      throw Error("This action is unavailable.");
+    await action.click({ checked: !action.checked });
   });
   ipcMain.handle("vacuum:start", () => {
     startClean();

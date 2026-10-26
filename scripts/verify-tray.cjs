@@ -6,18 +6,17 @@ const { _electron } = require("playwright");
 async function poll(read, predicate, label) {
   const end = Date.now() + 45000;
   while (Date.now() < end) {
-    const value = await read();
-    if (predicate(value)) return value;
-    await new Promise((r) => setTimeout(r, 70));
+    if (predicate(await read())) return;
+    await new Promise((resolve) => setTimeout(resolve, 70));
   }
   throw Error("Timed out: " + label);
 }
 (async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "vacuum-tray-proof-"));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "vacuum-custom-tray-"));
   for (const folder of ["temp", "downloads", "local/CrashDumps"])
     await fs.mkdir(path.join(root, folder), { recursive: true });
-  const fixture = path.join(root, "temp", "retained-tray.tmp");
-  await fs.writeFile(fixture, "Retained tray proof.");
+  const fixture = path.join(root, "temp", "retained-menu.tmp");
+  await fs.writeFile(fixture, "Custom menu test. Keep this file.");
   const old = new Date(Date.now() - 20 * 86400000);
   await fs.utimes(fixture, old, old);
   const packaged = !!process.env.VACUUM_PACKAGED_EXE;
@@ -28,164 +27,239 @@ async function poll(read, predicate, label) {
       : [path.resolve(__dirname, ".."), "--test-mode", "--background"],
     env: { ...process.env, VACUUM_TEST_ROOT: root },
   });
+  let exited = false;
   try {
-    const page = await app.firstWindow();
-    await page.getByRole("button", { name: "Settings", exact: true }).waitFor();
-    const errors = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-    const read = () => page.evaluate(() => window.vacuum.get());
+    const main = await app.firstWindow();
+    await main.getByRole("button", { name: "Settings", exact: true }).waitFor();
     await app.evaluate(({ Tray }) => {
-      const native = Tray.prototype.setContextMenu;
+      const original = Tray.prototype.setContextMenu;
       Tray.prototype.setContextMenu = function (menu) {
         global.fixtureTray = this;
-        global.fixtureTrayMenu = menu;
-        return native.call(this, menu);
+        global.fixtureNativeMenu = menu;
+        return original.call(this, menu);
       };
     });
-    await page.evaluate(() => window.vacuum.settings({}));
-    assert.equal(
-      await app.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()
-          .find(
-            (w) =>
-              !w.webContents.getURL().endsWith("#companion") &&
-              !w.webContents.getURL().endsWith("#tray"),
-          )
-          .isVisible(),
-      ),
-      false,
+    await main.evaluate(() => window.vacuum.settings({}));
+    assert.equal(await app.evaluate(() => global.fixtureNativeMenu), null);
+    const created = app.waitForEvent("window");
+    const openMenu = () =>
+      app.evaluate(({ screen }) => {
+        const work = screen.getPrimaryDisplay().workArea;
+        global.fixtureTray.emit(
+          "right-click",
+          {},
+          {
+            x: work.x + work.width - 40,
+            y: work.y + work.height,
+            width: 24,
+            height: 32,
+          },
+        );
+      });
+    await openMenu();
+    const popup = await created;
+    const errors = [];
+    popup.on("pageerror", (error) => errors.push(error.message));
+    const menu = popup.getByRole("region", {
+      name: "Vacuum controls",
+      exact: true,
+    });
+    await menu.waitFor();
+    await popup.waitForFunction(() => innerWidth > 700);
+    await popup.waitForFunction(
+      () =>
+        document.querySelector(".hotspot-power")?.getBoundingClientRect()
+          .width > 0,
     );
-    const popupCreated = app.waitForEvent("window");
-    await app.evaluate(() => global.fixtureTray.emit("click"));
-    const popup = await popupCreated;
-    await popup.locator(".tray-robot .robot-scene canvas").waitFor();
-    assert.equal(
-      await app.evaluate(({ BrowserWindow }) =>
+    const read = () => popup.evaluate(() => window.vacuum.get());
+    const mainVisible = () =>
+      app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()
-          .find((w) => w.webContents.getURL().endsWith("#tray"))
+          .find((w) => !w.webContents.getURL().includes("#"))
           .isVisible(),
-      ),
+      );
+    assert.equal(await mainVisible(), false);
+    const layout = await popup.evaluate(() => {
+      const robot = document
+          .querySelector(".tray-robot-stage")
+          .getBoundingClientRect(),
+        menu = document.querySelector(".tray-menu").getBoundingClientRect(),
+        quit = document
+          .querySelector(".tray-menu-quit")
+          .getBoundingClientRect();
+      return {
+        robotSeparate: robot.right <= menu.left,
+        robotHeight: robot.height,
+        quitVisible: quit.bottom <= innerHeight,
+        noOuterScroll: document.documentElement.scrollHeight === innerHeight,
+      };
+    });
+    assert.equal(layout.robotSeparate, true);
+    assert.ok(layout.robotHeight > 300);
+    assert.equal(layout.quitVisible, true);
+    assert.equal(layout.noOuterScroll, true);
+    await fs.mkdir(path.resolve("test-results"), { recursive: true });
+    async function settleForScreenshot() {
+      await popup.mouse.move(20, 20);
+      await popup.waitForFunction(() =>
+        document
+          .getAnimations()
+          .every((animation) => animation.playState === "finished"),
+      );
+    }
+    await settleForScreenshot();
+    await popup.screenshot({ path: "test-results/custom-tray-dark.png" });
+    await popup.keyboard.press("Escape");
+    await menu.waitFor({ state: "detached" });
+    assert.equal(
+      await popup
+        .getByRole("button", { name: "Vacuum menu", exact: true })
+        .evaluate((el) => el === document.activeElement),
       true,
     );
-    await popup.evaluate(() => window.vacuum.window("hide-tray"));
-    async function click(id) {
-      await app.evaluate((_, id) => {
-        const item = global.fixtureTrayMenu.getMenuItemById(id);
-        if (!item || !item.enabled) throw Error("Tray item unavailable: " + id);
-        item.click(item);
-      }, id);
-    }
-    await click("wet");
-    await poll(read, (s) => s.settings.wet, "wet on");
-    await click("wet");
-    await poll(read, (s) => !s.settings.wet, "wet off");
-    await click("auto");
-    await poll(read, (s) => s.settings.auto, "daily on");
-    await click("auto");
-    await poll(read, (s) => !s.settings.auto, "daily off");
-    await click("companion");
-    await poll(read, (s) => !s.settings.companion, "companion off");
-    await click("light");
-    await poll(read, (s) => s.settings.theme === "light", "theme");
-    await click("clean");
-    await poll(read, (s) => s.phase !== "docked", "hidden scan starts");
-    assert.equal(
-      await app.evaluate(
-        () => global.fixtureTrayMenu.getMenuItemById("wet").enabled,
-      ),
-      false,
-    );
-    assert.equal(
-      await app.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()
-          .find(
-            (w) =>
-              !w.webContents.getURL().endsWith("#companion") &&
-              !w.webContents.getURL().endsWith("#tray"),
-          )
-          .isVisible(),
-      ),
-      false,
-    );
-    await poll(
-      read,
-      (s) => s.phase === "docked" && s.bin.count === 1,
-      "hidden scan completes",
-    );
-    for (const [id, heading] of [
-      ["bin", "Dust bin"],
-      ["old", "Old Downloads"],
-      ["performance", "Performance"],
-      ["settings", "Settings"],
+    await popup.keyboard.press("Enter");
+    await menu.waitFor();
+    for (const name of [
+      "Wet cleaning",
+      "Daily autoclean",
+      "Taskbar robot",
+      "Start with Windows",
     ]) {
-      await click(id);
-      await page
-        .getByRole("dialog")
-        .getByRole("heading", { name: heading, exact: true })
-        .waitFor();
-      await page
-        .getByRole("button", { name: "Close panel", exact: true })
-        .click();
-      await page.getByRole("dialog").waitFor({ state: "detached" });
+      const control = menu.getByRole("switch", { name, exact: true });
+      const before = await control.getAttribute("aria-checked");
+      await control.click();
+      await poll(
+        () => control.getAttribute("aria-checked"),
+        (value) => value !== before,
+        name + " toggled",
+      );
+      await control.click();
+      await poll(
+        () => control.getAttribute("aria-checked"),
+        (value) => value === before,
+        name + " restored",
+      );
     }
-    await page.evaluate(() => window.vacuum.window("minimize"));
-    await click("station");
-    await poll(
-      () =>
-        app.evaluate(({ BrowserWindow }) => {
-          const w = BrowserWindow.getAllWindows().find(
-            (w) =>
-              !w.webContents.getURL().endsWith("#companion") &&
-              !w.webContents.getURL().endsWith("#tray"),
-          );
-          return w.isVisible() && !w.isMinimized();
-        }),
-      Boolean,
-      "restored station",
+    await menu.getByRole("button", { name: "Porcelain", exact: true }).click();
+    await poll(read, (s) => s.settings.theme === "light", "light theme");
+    await settleForScreenshot();
+    await popup.screenshot({ path: "test-results/custom-tray-light.png" });
+    await menu.getByRole("button", { name: "Graphite", exact: true }).click();
+    await poll(read, (s) => s.settings.theme === "dark", "dark theme");
+    await assert.rejects(
+      popup.evaluate(() => window.vacuum.trayAction("unknown-action")),
     );
-    await page.evaluate(() => window.vacuum.window("close"));
-    await click("clean");
+    await menu
+      .getByRole("button", { name: "Start cleaning", exact: false })
+      .click();
     await poll(
       read,
       (s) => ["departing", "cleaning"].includes(s.phase),
-      "second round",
+      "native cleaning",
     );
-    await click("clean");
-    await poll(read, (s) => s.phase === "docked", "tray recall");
-    assert.equal(await fs.readFile(fixture, "utf8"), "Retained tray proof.");
+    assert.equal(
+      await menu
+        .getByRole("switch", { name: "Wet cleaning", exact: true })
+        .isDisabled(),
+      true,
+    );
+    await assert.rejects(popup.evaluate(() => window.vacuum.trayAction("wet")));
+    await menu
+      .getByRole("button", { name: "Return to dock", exact: false })
+      .click();
+    await poll(read, (s) => s.phase === "docked", "return to dock");
+    await menu
+      .getByRole("button", { name: "Start cleaning", exact: false })
+      .click();
+    await poll(
+      read,
+      (s) => s.phase === "docked" && s.bin.count === 1,
+      "fixture collection",
+    );
+    await menu.getByRole("button", { name: /Dust bin/ }).click();
+    await popup.getByRole("dialog", { name: "Dust bin" }).waitFor();
+    assert.equal(await mainVisible(), false);
+    await popup
+      .getByRole("button", { name: "Back to robot", exact: true })
+      .click();
+    for (const [button, heading] of [
+      ["Old Downloads", "Old Downloads"],
+      ["Apps & ports", "Performance"],
+      ["Settings", "Settings"],
+    ]) {
+      await openMenu();
+      await menu.waitFor();
+      await menu.getByRole("button", { name: button, exact: false }).click();
+      await main
+        .getByRole("dialog")
+        .getByRole("heading", { name: heading, exact: true })
+        .waitFor();
+      await main
+        .getByRole("button", { name: "Close panel", exact: true })
+        .click();
+      await main.getByRole("dialog").waitFor({ state: "detached" });
+      await main.evaluate(() => window.vacuum.window("close"));
+    }
+    await openMenu();
+    await menu.waitFor();
+    await popup.evaluate(
+      () => (document.querySelector(".tray-menu-body").scrollTop = 10000),
+    );
+    assert.equal(
+      await menu
+        .getByRole("button", { name: "Quit Vacuum", exact: true })
+        .isVisible(),
+      true,
+    );
+    await popup.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(
+      await menu.evaluate((el) => getComputedStyle(el).animationName),
+      "none",
+    );
     const saved = JSON.parse(
       await fs.readFile(
         path.join(root, "vacuum-test-profile", "settings.json"),
         "utf8",
       ),
     );
-    assert.equal(saved.theme, "light");
-    assert.equal(saved.auto, false);
+    assert.equal(saved.theme, "dark");
     assert.equal(saved.wet, false);
-    assert.equal(saved.companion, false);
+    assert.equal(saved.auto, false);
+    assert.equal(
+      await fs.readFile(fixture, "utf8"),
+      "Custom menu test. Keep this file.",
+    );
     assert.deepEqual(errors, []);
+    const exit = app.waitForEvent("close");
+    await menu
+      .getByRole("button", { name: "Quit Vacuum", exact: true })
+      .click();
+    await exit;
+    exited = true;
     const report = {
       packaged,
-      leftClickShows3DRobot: true,
-      hiddenCleaningAndRecall: true,
-      modeChangesPersist: true,
-      binOldPerformanceAndSettingsRoutes: true,
-      minimizedStationRestored: true,
-      busyActionsDisabled: true,
-      fixtureUnchanged: true,
+      nativeRightClickOpensCustomPanel: true,
+      noNativeMenu: true,
+      fullRobotVisible: true,
+      fixedFooter: true,
+      switchesAndThemesPersist: true,
+      startsAndRecallsNativeCleaner: true,
+      binReviewInPopup: true,
+      stationRoutes: true,
+      disabledActionsValidatedInMain: true,
+      escapeAndKeyboardReopen: true,
+      reducedMotion: true,
+      customQuitWorks: true,
+      fixtureRetained: true,
       rendererErrors: errors.length,
-      permanentlyDeletedFiles: 0,
     };
-    await fs.mkdir(path.resolve(__dirname, "../test-results"), {
-      recursive: true,
-    });
     await fs.writeFile(
-      path.resolve(__dirname, "../test-results/tray-proof.json"),
+      "test-results/custom-tray-proof.json",
       JSON.stringify(report, null, 2),
     );
     console.log(JSON.stringify(report, null, 2));
   } finally {
-    await app.close();
+    if (!exited) await app.close();
   }
 })().catch((error) => {
   console.error(error);
