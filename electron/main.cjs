@@ -147,18 +147,25 @@ function openFromTray(panel) {
   send();
 }
 let trayBlurAt = 0;
+let trayExpanded = false;
+let trayAnchor;
+function resizeTrayRobot() {
+  if (!trayPopup || trayPopup.isDestroyed()) return;
+  const anchor = trayAnchor || tray.getBounds();
+  const display = screen.getDisplayNearestPoint({
+    x: Math.round(anchor.x),
+    y: Math.round(anchor.y),
+  });
+  trayPopup.setBounds(trayPopupBounds(anchor, display.workArea, trayExpanded));
+}
 function toggleTrayRobot(bounds) {
   if (trayPopup?.isVisible() || Date.now() - trayBlurAt < 180) {
     trayPopup?.hide();
     return;
   }
   const show = () => {
-    const iconBounds = bounds?.width ? bounds : tray.getBounds();
-    const display = screen.getDisplayNearestPoint({
-      x: Math.round(iconBounds.x),
-      y: Math.round(iconBounds.y),
-    });
-    trayPopup.setBounds(trayPopupBounds(iconBounds, display.workArea));
+    trayAnchor = bounds?.width ? bounds : tray.getBounds();
+    resizeTrayRobot();
     trayPopup.show();
     trayPopup.focus();
     send();
@@ -598,6 +605,31 @@ app.whenReady().then(async () => {
     trashItem: (p) => shell.trashItem(p),
     compactFiles,
     assertBrowserClosed: createBrowserGuard(),
+    onEmptyProgress: (() => {
+      let last = 0,
+        pending;
+      const emit = () => {
+        clearTimeout(pending);
+        pending = null;
+        last = Date.now();
+        for (const window of [main, companion, trayPopup])
+          if (window && !window.isDestroyed())
+            window.webContents.send("vacuum:progress", {
+              emptyProgress: state.emptyProgress,
+            });
+      };
+      return (progress) => {
+        state.emptyProgress = progress;
+        const remaining = 100 - (Date.now() - last);
+        if (
+          progress.processed === 0 ||
+          progress.processed === progress.total ||
+          remaining <= 0
+        )
+          emit();
+        else if (!pending) pending = setTimeout(emit, remaining);
+      };
+    })(),
     onProgress: (p) => {
       state.progress = p;
       state.message = `Scanning ${p.category === "crash-dumps" ? "crash dumps" : p.category === "browser-cache" ? "browser caches" : "temporary files"} · ${p.visited.toLocaleString()} checked · ${p.found.toLocaleString()} found`;
@@ -678,12 +710,20 @@ app.whenReady().then(async () => {
   ipcMain.handle("vacuum:empty", async (_e, selection) => {
     if (controller || state.phase !== "docked")
       throw new Error("Return to dock before emptying.");
+    const selectionIds = ids(selection);
+    state.emptyProgress = {
+      processed: 0,
+      total: new Set(selectionIds).size,
+      recycled: 0,
+      skipped: 0,
+      bytes: 0,
+    };
     state.phase = "emptying";
     const emptyStarted = Date.now();
     send();
     try {
       const storageBefore = await sampleStorage(fixtureRoot || os.tmpdir());
-      const result = await cleaner.emptyBin(ids(selection));
+      const result = await cleaner.emptyBin(selectionIds);
       await new Promise((resolve) =>
         setTimeout(resolve, Math.max(0, 900 - (Date.now() - emptyStarted))),
       );
@@ -828,6 +868,11 @@ app.whenReady().then(async () => {
     if (action === "minimize") main.minimize();
     if (action === "close") main.hide();
     if (action === "show") showMain();
+  });
+  ipcMain.handle("vacuum:tray-view", (_e, expanded) => {
+    if (typeof expanded !== "boolean") throw Error("Invalid tray view.");
+    trayExpanded = expanded;
+    resizeTrayRobot();
   });
   ipcMain.handle("vacuum:panel", (_e, name) => {
     if (![null, "bin", "settings", "old", "performance"].includes(name))

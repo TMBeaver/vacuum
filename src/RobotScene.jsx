@@ -196,6 +196,7 @@ export default function RobotScene({
         renderer.domElement.addEventListener("pointerleave", leave);
       }
       const resize = () => {
+        renderActivity.current = performance.now() + 500;
         const w = el.clientWidth,
           h = el.clientHeight;
         renderer.setSize(w, h);
@@ -204,7 +205,16 @@ export default function RobotScene({
           camera.right = 18;
           camera.top = (18 * h) / w;
           camera.bottom = (-18 * h) / w;
-        } else camera.aspect = w / h;
+        } else {
+          camera.aspect = w / h;
+          camera.fov = THREE.MathUtils.radToDeg(
+            2 *
+              Math.atan(
+                Math.tan(THREE.MathUtils.degToRad(14)) /
+                  Math.min(1, Math.max(0.1, w / h)),
+              ),
+          );
+        }
         camera.updateProjectionMatrix();
       };
       observer = new ResizeObserver(resize);

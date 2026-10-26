@@ -987,3 +987,48 @@ footer,
   font-family: "Consolas", monospace;
   font-size: 10px;
 }
+
+/* Keep the complete model in the space beside every station panel. */
+.app {
+  --station-panel-width: clamp(320px, 42vw, 440px);
+  --station-gutter: 40px;
+}
+.robot-stage {
+  width: 100%;
+  transition:
+    width 0.3s ease,
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.app:has(.sheet) .robot-stage {
+  transform: none;
+  width: calc(100% - var(--station-panel-width) + var(--station-gutter));
+}
+.app:has(.sheet) .robot-stage .robot-scene {
+  inset: 0;
+}
+.app .sheet {
+  width: var(--station-panel-width);
+  max-width: none;
+}
+.sheet-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  padding-bottom: 8px;
+}
+.sheet-bottom:has(.empty-progress) {
+  display: block;
+}
+@media (max-width: 1000px) {
+  .app {
+    --station-gutter: 25px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .robot-stage {
+    transition: none;
+  }
+}

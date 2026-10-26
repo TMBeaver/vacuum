@@ -154,12 +154,23 @@ const os = require("node:os");
       .getByRole("button", { name: "Close panel", exact: true })
       .click();
     // Click the physical 3D power mesh through its projected coordinate.
-    await page.waitForFunction(() =>
-      document
-        .querySelector(".robot-stage")
-        .getAnimations()
-        .every((animation) => animation.playState === "finished"),
-    );
+    await page.waitForFunction(() => {
+      const stage = document.querySelector(".robot-stage"),
+        parent = stage.parentElement;
+      const style = getComputedStyle(parent);
+      const available =
+        parent.clientWidth -
+        parseFloat(style.paddingLeft) -
+        parseFloat(style.paddingRight);
+      return (
+        !document.querySelector(".hotspot-power").disabled &&
+        !document.querySelector(".sheet") &&
+        Math.abs(stage.getBoundingClientRect().width - available) < 1 &&
+        stage
+          .getAnimations()
+          .every((animation) => animation.playState === "finished")
+      );
+    });
     const power = await page.locator(".hotspot-power").boundingBox();
     await page
       .locator(".hotspot-power")

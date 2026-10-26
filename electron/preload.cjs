@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.invoke("vacuum:performance-action", id, mode),
     window: (action) => ipcRenderer.invoke("vacuum:window", action),
     panel: (name) => ipcRenderer.invoke("vacuum:panel", name),
+    trayView: (expanded) => ipcRenderer.invoke("vacuum:tray-view", expanded),
     subscribe: (callback) => {
       const fn = (_e, s) => callback(s);
       ipcRenderer.on("vacuum:state", fn);

@@ -1,0 +1,64 @@
+.empty-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  color: var(--text);
+}
+.empty-progress-ring {
+  position: relative;
+  flex: 0 0 48px;
+  height: 48px;
+}
+.empty-progress-ring svg {
+  width: 48px;
+  height: 48px;
+  transform: rotate(-90deg);
+  fill: none;
+  stroke-width: 2.5;
+}
+.progress-track {
+  stroke: var(--line);
+}
+.progress-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.18s ease-out;
+}
+.empty-progress-ring > span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.empty-progress-ring small {
+  font-size: 8px;
+  margin-left: 1px;
+}
+.empty-progress-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.empty-progress-copy strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.empty-progress-copy span {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.empty-progress-copy small {
+  font-size: 10px;
+  color: var(--muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill {
+    transition: none;
+  }
+}

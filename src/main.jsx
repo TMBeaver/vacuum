@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import RobotScene from "./RobotScene";
 import TrayRobot from "./TrayRobot";
+import EmptyProgress from "./EmptyProgress";
 import TaskbarCompanion from "./TaskbarCompanion";
 import FileReview from "./FileReview";
 import PerformanceReview from "./PerformanceReview";
@@ -685,7 +686,7 @@ function App() {
                       )}
                     </div>
                   )}
-                {panel === "bin" && s.lastEmpty && (
+                {panel === "bin" && s.lastEmpty && s.phase !== "emptying" && (
                   <div className="recycling-receipt" role="status">
                     <strong>
                       {s.lastEmpty.trashed}{" "}
@@ -845,6 +846,9 @@ function App() {
                       </div>
                     )}
                     <div className="sheet-bottom">
+                      {panel === "bin" && s.phase === "emptying" && (
+                        <EmptyProgress progress={s.emptyProgress} />
+                      )}
                       {panel === "old" ? (
                         <button
                           className="start-button"

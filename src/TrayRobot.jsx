@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowUpRight, X, ArrowLeft, Droplets } from "lucide-react";
 import RobotScene from "./RobotScene";
 import FileReview from "./FileReview";
+import EmptyProgress from "./EmptyProgress";
 import { formatSize } from "./format-size.mjs";
 import "./tray-robot.css";
 
@@ -13,6 +14,7 @@ export default function TrayRobot({ api, initial }) {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [skipped, setSkipped] = useState([]);
+  const [receipt, setReceipt] = useState(null);
   const active = ["departing", "cleaning", "wet"].includes(state.phase);
   const busy = state.phase !== "docked";
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function TrayRobot({ api, initial }) {
     document.documentElement.dataset.theme = state.settings.theme;
   }, [state.settings.theme]);
   useEffect(() => {
+    api.trayView?.(binOpen)?.catch((e) => setError(e.message));
     if (binOpen) document.querySelector(".tray-bin button")?.focus();
     const key = (event) => {
       if (event.key === "Escape") {
@@ -35,26 +38,6 @@ export default function TrayRobot({ api, initial }) {
           setBinOpen(false);
           setConfirm(false);
         } else api.window("hide-tray");
-      }
-      if (event.key === "Tab" && binOpen) {
-        const items = [
-          ...document.querySelectorAll(
-            ".tray-bin button:not(:disabled), .tray-bin input:not(:disabled)",
-          ),
-        ].filter((el) => el.getClientRects().length);
-        if (!items.length) return;
-        const first = items[0],
-          last = items.at(-1);
-        if (!document.activeElement.closest(".tray-bin")) {
-          event.preventDefault();
-          (event.shiftKey ? last : first).focus();
-        } else if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
       }
     };
     document.addEventListener("keydown", key);
@@ -78,12 +61,13 @@ export default function TrayRobot({ api, initial }) {
     if (name === "bin" && !busy) {
       setSelected(new Set(state.bin.files.map((file) => file.id)));
       setSkipped([]);
+      setReceipt(null);
       setConfirm(false);
       setBinOpen(true);
     }
   }
   return (
-    <div className="tray-robot">
+    <div className={`tray-robot ${binOpen ? "has-bin" : ""}`}>
       <header className="tray-robot-header">
         <strong>vacuum</strong>
         <div>
@@ -150,11 +134,27 @@ export default function TrayRobot({ api, initial }) {
         <section
           className="tray-bin"
           role="dialog"
-          aria-modal="true"
+          aria-modal="false"
           aria-label="Dust bin"
         >
           <div className="tray-bin-heading">
             <h2>Dust bin</h2>
+            <button
+              className="text-button"
+              disabled={busy || working || !state.bin.count}
+              onClick={() => {
+                setConfirm(false);
+                setSelected(
+                  selected.size === state.bin.count
+                    ? new Set()
+                    : new Set(state.bin.files.map((file) => file.id)),
+                );
+              }}
+            >
+              {selected.size === state.bin.count
+                ? "Deselect all"
+                : "Select all"}
+            </button>
             <button
               className="icon-button"
               aria-label="Back to robot"
@@ -168,49 +168,70 @@ export default function TrayRobot({ api, initial }) {
           </div>
           {state.bin.count ? (
             <>
-              <FileReview
-                files={state.bin.files}
-                selected={selected}
-                choose={(id) => {
-                  setConfirm(false);
-                  setSelected((previous) => {
-                    const next = new Set(previous);
-                    next.has(id) ? next.delete(id) : next.add(id);
-                    return next;
-                  });
-                }}
-                skipped={skipped}
-                formatSize={formatSize}
-              />
-              {confirm && (
-                <p className="tray-bin-confirm">
-                  Send {selected.size} selected{" "}
-                  {selected.size === 1 ? "file" : "files"} to Windows Recycle
-                  Bin?
-                </p>
-              )}
-              <button
-                className="primary-button"
-                disabled={busy || working || !selected.size}
-                onClick={() => {
-                  if (!confirm) {
-                    setConfirm(true);
-                    return;
-                  }
-                  run(async () => {
-                    const result = await api.empty([...selected]);
-                    setSkipped(result.skipped);
-                    setState(await api.get());
+              <fieldset className="tray-bin-files" disabled={busy || working}>
+                <FileReview
+                  files={state.bin.files}
+                  selected={selected}
+                  choose={(id) => {
                     setConfirm(false);
-                  });
-                }}
-              >
-                {working || state.phase === "emptying"
-                  ? "Emptying…"
-                  : confirm
-                    ? "Send to Recycle Bin"
-                    : `Empty selected · ${selected.size}`}
-              </button>
+                    setSelected((previous) => {
+                      const next = new Set(previous);
+                      next.has(id) ? next.delete(id) : next.add(id);
+                      return next;
+                    });
+                  }}
+                  skipped={skipped}
+                  formatSize={formatSize}
+                />
+              </fieldset>
+              <div className="tray-bin-actions">
+                {state.phase === "emptying" ? (
+                  <EmptyProgress progress={state.emptyProgress} />
+                ) : (
+                  confirm && (
+                    <p className="tray-bin-confirm">
+                      Send {selected.size} selected{" "}
+                      {selected.size === 1 ? "file" : "files"} to Windows
+                      Recycle Bin?
+                    </p>
+                  )
+                )}
+                {receipt && !confirm && state.phase !== "emptying" && (
+                  <p className="tray-bin-receipt" role="status">
+                    {receipt.recycled.toLocaleString()} recycled ·{" "}
+                    {receipt.skipped.toLocaleString()} skipped
+                  </p>
+                )}
+                <button
+                  className="primary-button"
+                  disabled={busy || working || !selected.size}
+                  onClick={() => {
+                    if (!confirm) {
+                      setConfirm(true);
+                      return;
+                    }
+                    run(async () => {
+                      const result = await api.empty([...selected]);
+                      setSkipped(result.skipped);
+                      setSelected(
+                        new Set(result.skipped.map((item) => item.id)),
+                      );
+                      setReceipt({
+                        recycled: result.trashed,
+                        skipped: result.skipped.length,
+                      });
+                      setState(await api.get());
+                      setConfirm(false);
+                    });
+                  }}
+                >
+                  {working || state.phase === "emptying"
+                    ? "Emptying…"
+                    : confirm
+                      ? "Send to Recycle Bin"
+                      : `Empty selected · ${selected.size}`}
+                </button>
+              </div>
             </>
           ) : (
             <p className="tray-bin-empty">

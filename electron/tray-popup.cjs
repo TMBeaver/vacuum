@@ -1,5 +1,5 @@
-function trayPopupBounds(anchor, work) {
-  const width = Math.min(440, work.width - 16);
+function trayPopupBounds(anchor, work, expanded = false) {
+  const width = Math.min(expanded ? 820 : 440, work.width - 16);
   const height = Math.min(500, work.height - 16);
   const below = anchor.y + anchor.height + 8;
   const above = anchor.y - height - 8;

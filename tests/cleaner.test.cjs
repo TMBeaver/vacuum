@@ -243,3 +243,46 @@ test("corrupt and forged manifests fail closed", async (t) => {
   );
   assert.equal((await createCleaner(f.config).getBin()).count, 0);
 });
+
+test("recycle progress reports durable successes and skipped files without inflating totals", async (t) => {
+  const progress = [];
+  const f = await fixture(t, {
+    onEmptyProgress: (p) => progress.push({ ...p }),
+    trashItem: async (file) => {
+      if (file.endsWith("refused.tmp")) throw Error("Fixture refusal");
+    },
+  });
+  await f.file("temp/good.tmp");
+  await f.file("temp/refused.tmp");
+  const changed = await f.file("temp/changed.tmp");
+  const scan = await f.engine.scan();
+  await fs.writeFile(changed, "Updated contents must stay intact");
+  const result = await f.engine.emptyBin([
+    ...scan.files.map((file) => file.id),
+    scan.files[0].id,
+    "unknown-id",
+  ]);
+  assert.equal(result.trashed, 1);
+  assert.equal(result.skipped.length, 2);
+  assert.deepEqual(
+    progress.map((p) => p.processed),
+    [0, 1, 2, 3],
+  );
+  assert.ok(
+    progress.every(
+      (p) => p.total === 3 && p.processed === p.recycled + p.skipped,
+    ),
+  );
+  assert.equal(progress.at(-1).recycled, 1);
+  assert.equal(progress.at(-1).skipped, 2);
+  assert.equal(
+    JSON.parse(
+      await fs.readFile(path.join(f.config.userData, "bin.json"), "utf8"),
+    ).files.length,
+    2,
+  );
+  assert.equal(
+    await fs.readFile(changed, "utf8"),
+    "Updated contents must stay intact",
+  );
+});

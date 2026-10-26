@@ -4,6 +4,8 @@
 uses Node built-ins only. `trashItem` must be Electron's `shell.trashItem` (or a fixture spy in tests).
 All methods are asynchronous except `close()`.
 
+Optional `onEmptyProgress({ processed, total, recycled, skipped, bytes })` reports the current selected batch: initially zero processed, then one update after every committed recycling success or skipped attempt. Totals include only known selected bin IDs, deduplicated. `bytes` is logical recycled-file size, not reclaimed drive space. The UI bridge throttles these small events with a trailing update; it does not resend the whole bin per file.
+
 - `getBin()` → `{ files, count, bytes }`.
 - `scan({ signal } = {})` → bin plus `{ added, coverage }`. Automatic rules: `.tmp`, `.temp`, `.log` in `tempRoot` older than seven days; `.dmp` in `localAppData/CrashDumps` older than 30 days; standard Chrome/Edge network and JS/Wasm code-cache roots older than seven days while the browser is closed. Cancellation commits no additions. Scan does not move files.
 - `reviewOldFiles()` → `{ files, count, bytes, coverage }`. Downloads unchanged for 180 days. This is a suggestion, never proof a file is unnecessary. No automatic collection.

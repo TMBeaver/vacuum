@@ -33,6 +33,7 @@ function createCleaner({
   compactFiles,
   assertBrowserClosed,
   onProgress = () => {},
+  onEmptyProgress = () => {},
 }) {
   if (!userData || typeof trashItem !== "function")
     throw new TypeError("userData and trashItem are required.");
@@ -893,11 +894,21 @@ function createCleaner({
         if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string"))
           throw new TypeError("Select bin IDs to recycle.");
         const selected = new Set(ids);
+        const pending = records.filter((item) => selected.has(item.id));
         let trashed = 0;
         let bytes = 0;
+        let processed = 0;
         const skipped = [];
-        for (const item of [...records]) {
-          if (!selected.has(item.id)) continue;
+        const report = () =>
+          onEmptyProgress({
+            processed,
+            total: pending.length,
+            recycled: trashed,
+            skipped: skipped.length,
+            bytes,
+          });
+        report();
+        for (const item of pending) {
           try {
             await verify(item);
             // There is deliberately no unlink/rm fallback: Recycle Bin failure
@@ -908,9 +919,13 @@ function createCleaner({
             bytes += item.size;
           } catch (error) {
             skipped.push({ id: item.id, reason: error.message });
+            processed++;
+            report();
             continue;
           }
           await save(records.filter((record) => record.id !== item.id));
+          processed++;
+          report();
         }
         return { trashed, bytes, skipped, bin: bin() };
       }),

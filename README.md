@@ -12,9 +12,11 @@ Reproducible native checks: `node scripts/verify-storage.cjs`, `node scripts/ver
 
 ## Use it
 
-Download [Vacuum 0.3.2](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.2). The current-user installer creates Desktop and Start menu shortcuts. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray.
+Download [Vacuum 0.3.3](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.3). The current-user installer creates Desktop and Start menu shortcuts. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray.
 
 Click the Vacuum icon beside the Windows clock (possibly inside the hidden-icons arrow) for a small interactive 3D robot. Press power, home or the dust hatch directly on its body. Its bin opens inside the popup, with file selection and explicit recycling confirmation. Right-click keeps the native settings menu; double-click opens the full station. The small dot-and-Cleaning badge has been removed. Settings remain shared between all views. See [tray verification](docs/tray-control.md).
+
+The bin opens beside the complete robot. The file list scrolls independently of the pinned action controls, and emptying shows a real progress ring with processed, recycled and skipped counts. Full-station panels also leave the entire robot visible.
 
 - Press the **power button on the 3D robot** to collect known leftovers into its dust bin.
 - Open the bin to review individual files. **Empty selected** asks for confirmation and sends those files to Windows Recycle Bin. Scanning itself never moves files, and the bin never empties automatically.
