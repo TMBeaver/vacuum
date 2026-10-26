@@ -4,6 +4,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { writeAtomicJson } = require("./atomic-json.cjs");
+const { createDuplicateFolders } = require("./duplicate-folders.cjs");
 const {
   discoverBrowserCaches,
   recognizeCacheRoot,
@@ -40,6 +41,9 @@ function createCleaner({
   const storage = path.resolve(userData);
   const manifestPath = path.join(storage, "bin.json");
   const journalPath = path.join(storage, "compression-journal.json");
+  const duplicates = createDuplicateFolders(downloadsRoot, {
+    protectedPath: storage,
+  });
   const roots = [
     tempRoot && {
       path: path.resolve(tempRoot),
@@ -54,6 +58,11 @@ function createCleaner({
     downloadsRoot && {
       path: path.resolve(downloadsRoot),
       category: "old-downloads",
+      days: 180,
+    },
+    downloadsRoot && {
+      path: path.resolve(downloadsRoot),
+      category: "duplicate-downloads",
       days: 180,
     },
   ].filter(Boolean);
@@ -332,17 +341,21 @@ function createCleaner({
         item.compaction?.managed === true && !item.compaction?.recoveryProblem,
       recoveryProblem: item.compaction?.recoveryProblem,
       category: item.category,
+      kind: item.category === "duplicate-downloads" ? "folder" : "file",
+      originalPath: item.duplicate?.original,
       browser,
       reason:
-        Date.now() - item.mtimeMs <= root?.days * DAY
-          ? "Recently updated · kept in place · not eligible for recycling"
-          : item.category === "temporary"
-            ? "Temporary file · unchanged for over 7 days"
-            : item.category === "browser-cache"
-              ? `${browser || "Browser"} cache · unchanged for over 7 days · browser must be closed`
-              : item.category === "crash-dumps"
-                ? "Crash dump · unchanged for over 30 days"
-                : "Download · unchanged for over 180 days · selected by you",
+        item.category === "duplicate-downloads"
+          ? `Verified duplicate folder · ${item.duplicate?.fileCount || 0} files · over 180 days old · keep ${item.duplicate?.original}`
+          : Date.now() - item.mtimeMs <= root?.days * DAY
+            ? "Recently updated · kept in place · not eligible for recycling"
+            : item.category === "temporary"
+              ? "Temporary file · unchanged for over 7 days"
+              : item.category === "browser-cache"
+                ? `${browser || "Browser"} cache · unchanged for over 7 days · browser must be closed`
+                : item.category === "crash-dumps"
+                  ? "Crash dump · unchanged for over 30 days"
+                  : "Download · unchanged for over 180 days · selected by you",
     };
   }
 
@@ -554,6 +567,10 @@ function createCleaner({
     const root = roots.find(
       (root) => root.path === item.root && root.category === item.category,
     );
+    if (item.category === "duplicate-downloads") {
+      if (undo) throw Error("Folder copies cannot be compressed by Vacuum.");
+      return duplicates.verify(item);
+    }
     await guard(root);
     const metadata = await safeFile(item.path, root);
     if (undo) {
@@ -598,9 +615,29 @@ function createCleaner({
       run(async () => {
         await refreshBrowserRoots();
         const { found, coverage } = await walk(
-          roots.filter((root) => root.category !== "old-downloads"),
+          roots.filter(
+            (root) =>
+              !["old-downloads", "duplicate-downloads"].includes(root.category),
+          ),
           signal,
         );
+        const duplicateScan = await duplicates.scan(signal);
+        found.push(
+          ...duplicateScan.found.filter(
+            (folder) =>
+              !records.some(
+                (item) =>
+                  item.path !== folder.path && inside(folder.path, item.path),
+              ),
+          ),
+        );
+        coverage.visited += duplicateScan.visited;
+        coverage.duplicateFolders = {
+          verified: duplicateScan.found.length,
+          skipped: duplicateScan.skipped,
+        };
+        coverage.limited ||= duplicateScan.limited;
+        coverage.cancelled ||= duplicateScan.cancelled;
         coverage.errors += browserDiscoveryErrors;
         if (coverage.cancelled) return { ...bin(), added: 0, coverage };
         const existing = new Set(records.map((file) => file.path));
@@ -710,6 +747,10 @@ function createCleaner({
           skipped = [];
         for (const item of records.filter((item) => selected.has(item.id))) {
           try {
+            if (item.category === "duplicate-downloads")
+              throw Error(
+                "Duplicate folders are recycled as a whole; compression is only available for individual files.",
+              );
             const metadata = await verify(item, { undo: !compress });
             const root = roots.find(
               (root) =>

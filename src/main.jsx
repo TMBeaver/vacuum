@@ -531,6 +531,34 @@ function App() {
                 <p className="sheet-intro">
                   Choose when Vacuum runs and how it appears.
                 </p>
+                {panel === "bin" && s.coverage?.duplicateFolders && (
+                  <details className="duplicate-review">
+                    <summary>
+                      Duplicate Downloads:{" "}
+                      {s.coverage.duplicateFolders.verified} verified
+                    </summary>
+                    <p>
+                      Numbered copies must match their original and be unchanged
+                      for 180 days. Originals are kept. Both folders are checked
+                      again before recycling.
+                    </p>
+                    {s.coverage.duplicateFolders.skipped
+                      .slice(0, 10)
+                      .map((item) => (
+                        <p key={item.path}>
+                          <strong>{item.path}</strong>
+                          <br />
+                          {item.reason}
+                        </p>
+                      ))}
+                    {s.coverage.duplicateFolders.skipped.length > 10 && (
+                      <p>
+                        {s.coverage.duplicateFolders.skipped.length - 10} more
+                        folders were kept.
+                      </p>
+                    )}
+                  </details>
+                )}
                 <div className="setting-row">
                   <div>
                     <h3>Daily autoclean</h3>
@@ -611,7 +639,10 @@ function App() {
                     Crash dumps older than 30 days. Chrome and Edge network and
                     code caches older than 7 days, while the browser is closed.
                     Cookies, logins, sessions, extensions and site storage stay
-                    untouched. Personal folders are excluded from daily scans.
+                    untouched. Daily scans also compare numbered Downloads
+                    folders such as “Project (1)” with their original. Only
+                    identical copies unchanged for 180 days enter the bin. The
+                    original is kept.
                   </p>
                 </div>
               </div>

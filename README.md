@@ -12,7 +12,7 @@ Reproducible native checks: `node scripts/verify-storage.cjs`, `node scripts/ver
 
 ## Use it
 
-Download [Vacuum 0.3.4](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.4). The current-user installer creates Desktop and Start menu shortcuts. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray.
+Download [Vacuum 0.3.5](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.5). The current-user installer creates Desktop and Start menu shortcuts. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray.
 
 Click the Vacuum icon beside the Windows clock (possibly inside the hidden-icons arrow) for a small interactive 3D robot. Press power, home or the dust hatch directly on its body. Its bin opens inside the popup, with file selection and explicit recycling confirmation. Right-click opens custom controls beside the full robot: cleaning, review shortcuts, mode switches and robot finishes. The same controls open from the three-dot header button; Settings and Quit stay pinned below. Double-click opens the full station. The small dot-and-Cleaning badge has been removed. Settings remain shared between all views. See [tray verification](docs/tray-control.md).
 
@@ -43,7 +43,9 @@ Original, narrow allowlisted rules:
 | Chrome / Edge standard profile caches     | Network `Cache/Cache_Data` and `Code Cache/js` / `wasm`, unchanged for more than seven days; browser must be closed |
 | Downloads, review only                    | Ordinary files unchanged for more than 180 days                                                                     |
 
-Personal usefulness cannot be inferred from file age. Automatic rounds do not touch Desktop, Documents, photos, backups, registry, browser cookies, logins, sessions, extensions, site storage, application dependencies, Windows servicing files, or Recycle Bin contents.
+Numbered Downloads folders such as `Project (1)` and `Project (2)` are compared with the unsuffixed `Project`. Copies and all their contents must be unchanged for over 180 days, with matching paths, directory structure, file sizes and SHA-256 hashes. Verified copies enter the bin; emptying rechecks both trees and sends only the copies to Windows Recycle Bin. The original stays. Links, extra Windows data streams, changed or unreadable contents and incomplete comparisons are protected. Comparison is bounded to 50,000 entries and 4 GiB of reads per round.
+
+Personal usefulness cannot be inferred from file age. Apart from verified duplicate-folder candidates in Downloads, automatic rounds do not touch Desktop, Documents, photos, backups, registry, browser cookies, logins, sessions, extensions, site storage, application dependencies, Windows servicing files, or Recycle Bin contents.
 
 Only standard `Default` and `Profile N` Chrome/Edge profiles under the current user's Local AppData are recognized. Custom, guest and other browser locations are excluded. Windows process detection protects each browser independently; unavailable detection protects its caches. The guard is checked again before recycling or compression, so reopening the browser after collection blocks that action. Process snapshots have a short 500 ms lifetime; the normal OS check-to-use race remains. Cache files are kept in place until explicit recycling.
 
