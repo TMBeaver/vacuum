@@ -88,6 +88,16 @@ async function poll(fn, accept, label) {
       .getByText("Verified duplicate folder", { exact: false })
       .first()
       .waitFor();
+    await page
+      .getByText("Duplicate Downloads: 2 verified", { exact: true })
+      .waitFor();
+    await page.locator(".duplicate-review summary").click();
+    await page
+      .getByText("Folder contents differ from the original.", { exact: false })
+      .waitFor();
+    await page.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState === "finished"),
+    );
     await fs.mkdir(path.resolve(__dirname, "../test-results"), {
       recursive: true,
     });

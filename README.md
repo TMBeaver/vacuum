@@ -12,7 +12,7 @@ Reproducible native checks: `node scripts/verify-storage.cjs`, `node scripts/ver
 
 ## Use it
 
-Download [Vacuum 0.3.5](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.5). The current-user installer creates Desktop and Start menu shortcuts. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray.
+Download [Vacuum 0.3.6](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.6). The current-user installer creates Desktop and Start menu shortcuts. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray.
 
 Click the Vacuum icon beside the Windows clock (possibly inside the hidden-icons arrow) for a small interactive 3D robot. Press power, home or the dust hatch directly on its body. Its bin opens inside the popup, with file selection and explicit recycling confirmation. Right-click opens custom controls beside the full robot: cleaning, review shortcuts, mode switches and robot finishes. The same controls open from the three-dot header button; Settings and Quit stay pinned below. Double-click opens the full station. The small dot-and-Cleaning badge has been removed. Settings remain shared between all views. See [tray verification](docs/tray-control.md).
 

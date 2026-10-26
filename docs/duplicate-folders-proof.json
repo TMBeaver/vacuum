@@ -9,5 +9,6 @@
   "originalStillExists": true,
   "rendererErrors": 0,
   "permanentlyDeletedFiles": 0,
-  "automatedTestsPassed": 85
+  "automatedTestsPassed": 85,
+  "duplicateSummaryAndSkipReasonsVisible": true
 }
