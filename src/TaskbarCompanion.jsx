@@ -107,6 +107,23 @@ export default function TaskbarCompanion({ theme, phase }) {
       c.beginPath();
       c.ellipse(1, 2, r, r * 0.93, 0, 0, Math.PI * 2);
       c.fill();
+      // The side brush sits below the shell; only its outer bristles show.
+      if (working && !reduced) {
+        c.strokeStyle = s.theme === "light" ? "#c3ccb8" : "#8b9c7a";
+        c.lineWidth = 0.7;
+        const spin = now * 0.015;
+        c.save();
+        c.translate(r * 0.55, r * 0.7);
+        c.rotate(spin);
+        for (let i = 0; i < 3; i++) {
+          c.rotate((Math.PI * 2) / 3);
+          c.beginPath();
+          c.moveTo(0, 0);
+          c.lineTo(4, 0);
+          c.stroke();
+        }
+        c.restore();
+      }
       const g = c.createRadialGradient(-r * 0.4, -r * 0.5, 1, 0, 0, r);
       g.addColorStop(0, s.theme === "light" ? "#fafbf5" : "#76806e");
       g.addColorStop(0.65, s.theme === "light" ? "#dce1d3" : "#394431");
@@ -133,22 +150,6 @@ export default function TaskbarCompanion({ theme, phase }) {
       c.beginPath();
       c.arc(r * 0.34, 0, 1.1, 0, Math.PI * 2);
       c.fill();
-      if (working && !reduced) {
-        c.strokeStyle = s.theme === "light" ? "#c3ccb8" : "#8b9c7a";
-        c.lineWidth = 0.7;
-        const spin = now * 0.015;
-        c.save();
-        c.translate(r * 0.55, r * 0.7);
-        c.rotate(spin);
-        for (let i = 0; i < 3; i++) {
-          c.rotate((Math.PI * 2) / 3);
-          c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(4, 0);
-          c.stroke();
-        }
-        c.restore();
-      }
       c.restore();
       el.dataset.motion = working
         ? "capsule"
