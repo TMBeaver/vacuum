@@ -216,6 +216,8 @@ export default function RobotScene({
           );
         }
         camera.updateProjectionMatrix();
+        // Resizing clears the drawing buffer; paint before the next compositor frame.
+        renderer.render(scene, camera);
       };
       observer = new ResizeObserver(resize);
       observer.observe(el);

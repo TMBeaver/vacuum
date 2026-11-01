@@ -12,14 +12,18 @@ Reproducible native checks: `node scripts/verify-storage.cjs`, `node scripts/ver
 
 ## Use it
 
-Download [Vacuum 0.3.6](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.6). The current-user installer creates Desktop and Start menu shortcuts. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray.
+Download [Vacuum 0.3.7](https://github.com/TMBeaver/vacuum/releases/tag/v0.3.7). The current-user installer creates Desktop and Start menu shortcuts. You can also run `release/win-unpacked/Vacuum.exe` from a local build. Closing the station leaves Vacuum in the tray.
 
 Click the Vacuum icon beside the Windows clock (possibly inside the hidden-icons arrow) for a small interactive 3D robot. Press power, home or the dust hatch directly on its body. Its bin opens inside the popup, with file selection and explicit recycling confirmation. Right-click opens custom controls beside the full robot: cleaning, review shortcuts, mode switches and robot finishes. The same controls open from the three-dot header button; Settings and Quit stay pinned below. Double-click opens the full station. The small dot-and-Cleaning badge has been removed. Settings remain shared between all views. See [tray verification](docs/tray-control.md).
 
 The bin opens beside the complete robot. The file list scrolls independently of the pinned action controls, and emptying shows a real progress ring with processed, recycled and skipped counts. Full-station panels also leave the entire robot visible.
 
+[Watch the short demo](https://github.com/TMBeaver/vacuum/releases/download/v0.3.7/Vacuum-demo-X-2026-11-01.mp4).
+
+![Empty the whole collected bin](docs/empty-entire-bin.png)
+
 - Press the **power button on the 3D robot** to collect known leftovers into its dust bin.
-- Open the bin to review individual files. **Empty selected** asks for confirmation and sends those files to Windows Recycle Bin. Scanning itself never moves files, and the bin never empties automatically.
+- Open the bin to review individual files. **Empty entire bin** processes every collected file and folder in one confirmed batch, even when the list is filtered or paginated. **Empty selected** remains available for a smaller selection. **Empty selected** asks for confirmation and sends those files to Windows Recycle Bin. Scanning itself never moves files, and the bin never empties automatically.
 - Press the **droplet button on the robot** to attach the mop. Wet cleaning adds Microsoft Defender scans of temporary files and Downloads, with a blue companion trail. The result distinguishes completion, cancellation, and an unavailable/unsuccessful scan. Open Windows Security from the result for further action.
 - **Forgotten files** suggests Downloads unchanged for 180 days. Select only files you no longer need. They require explicit collection and a separate empty-bin action.
 - Enable **Daily autoclean**, choose a local time, and enable **Start with Windows** to keep the routine running. Vacuum checks every 30 seconds while in the tray and catches up a missed daily round after launch or resume. It does not wake a shut-down computer. Automatic rounds fill the bin; they never empty it. Both automation and login startup are off on first launch.
@@ -98,3 +102,7 @@ Actions use reviewed, expiring IDs. Windows rechecks the current session/user, s
 Windows startup is verified against the current-user Run command and startup approval, including full switches that Electron's launch-item list may omit. External Windows disabling is reflected in Settings. The startup proof uses a disposable entry and checks that other registrations remain unchanged; it does not sign out or reboot.
 
 Undo preserves legitimate edits to the same file, including after app restart. It removes Vacuum-owned compression from the current contents; it does not restore an older copy. A recent edited file is still protected from recycling, and a replacement file at the same path cannot inherit Undo ownership.
+
+## License
+
+Vacuum is available under the [MIT license](LICENSE). Bundled fonts and dependencies retain their licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).

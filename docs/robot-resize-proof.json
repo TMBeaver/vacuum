@@ -1,0 +1,7 @@
+{
+  "packaged": true,
+  "panels": ["bin", "settings", "performance"],
+  "capturedFrames": 24,
+  "minimumModelPixelFraction": 0.4030811891625559,
+  "robotVisibleDuringResize": true
+}

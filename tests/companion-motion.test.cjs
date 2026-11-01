@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-test("taskbar loops remain within their lane including the whole vacuum body", async () => {
+test("taskbar loops keep the vacuum and its brush inside the lane", async () => {
   const { companionPose } = await import("../src/companion-path.mjs");
   for (const [w, h] of [
     [120, 24],
@@ -9,7 +9,8 @@ test("taskbar loops remain within their lane including the whole vacuum body", a
   ])
     for (let d = 0; d < 1600; d += 0.75) {
       const p = companionPose(w, h, d),
-        radius = Math.min(13, h * 0.3);
+        body = Math.min(13, h * 0.3),
+        radius = Math.max(body, body * (Math.hypot(0.55, 0.7) + 0.2 + 0.025));
       assert.ok(p.x - radius >= 0 && p.x + radius <= w);
       assert.ok(p.y - radius >= 0 && p.y + radius <= h);
     }

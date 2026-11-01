@@ -1037,6 +1037,10 @@ footer,
   border-top: 1px solid var(--line);
   padding-top: 12px;
   padding-bottom: 8px;
+  flex-wrap: wrap;
+}
+.sheet-bottom .empty-entire-bin {
+  width: 100%;
 }
 .sheet-bottom:has(.empty-progress) {
   display: block;

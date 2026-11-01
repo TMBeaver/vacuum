@@ -13,6 +13,7 @@ export default function TrayRobot({ api, initial }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [confirm, setConfirm] = useState(false);
+  const [emptyIds, setEmptyIds] = useState([]);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [skipped, setSkipped] = useState([]);
@@ -232,8 +233,8 @@ export default function TrayRobot({ api, initial }) {
                 ) : (
                   confirm && (
                     <p className="tray-bin-confirm">
-                      Send {selected.size} selected{" "}
-                      {selected.size === 1 ? "file" : "files"} to Windows
+                      Send {emptyIds.length} collected{" "}
+                      {emptyIds.length === 1 ? "item" : "items"} to Windows
                       Recycle Bin?
                     </p>
                   )
@@ -244,16 +245,33 @@ export default function TrayRobot({ api, initial }) {
                     {receipt.skipped.toLocaleString()} skipped
                   </p>
                 )}
+                {!confirm && (
+                  <button
+                    className="primary-button"
+                    disabled={busy || working || !state.bin.count}
+                    onClick={() => {
+                      setEmptyIds(state.bin.files.map((file) => file.id));
+                      setConfirm(true);
+                    }}
+                  >
+                    Empty entire bin · {state.bin.count.toLocaleString()}
+                  </button>
+                )}
                 <button
-                  className="primary-button"
-                  disabled={busy || working || !selected.size}
+                  className={confirm ? "primary-button" : "outline-button"}
+                  disabled={
+                    busy ||
+                    working ||
+                    !(confirm ? emptyIds.length : selected.size)
+                  }
                   onClick={() => {
                     if (!confirm) {
+                      setEmptyIds([...selected]);
                       setConfirm(true);
                       return;
                     }
                     run(async () => {
-                      const result = await api.empty([...selected]);
+                      const result = await api.empty(emptyIds);
                       setSkipped(result.skipped);
                       setSelected(
                         new Set(result.skipped.map((item) => item.id)),

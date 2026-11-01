@@ -114,6 +114,7 @@ function App() {
     [old, setOld] = useState(null),
     [selected, setSelected] = useState(new Set()),
     [confirm, setConfirm] = useState(false),
+    [emptyIds, setEmptyIds] = useState([]),
     [skipped, setSkipped] = useState([]);
   const active = ["departing", "cleaning", "wet", "returning"].includes(
       s.phase,
@@ -225,12 +226,14 @@ function App() {
   useEffect(() => {
     if (s.panelRequest?.id) openPanel(s.panelRequest.panel);
   }, [s.panelRequest?.id]);
-  const choose = (id) =>
+  const choose = (id) => {
+    setConfirm(false);
     setSelected((prev) => {
       const n = new Set(prev);
       n.has(id) ? n.delete(id) : n.add(id);
       return n;
     });
+  };
   const oldFiles = Array.isArray(old) ? old : old?.files || [];
   const files = panel === "old" ? oldFiles : s.bin.files;
   return (
@@ -799,13 +802,14 @@ function App() {
                       </span>
                       <button
                         className="text-button"
-                        onClick={() =>
+                        onClick={() => {
+                          setConfirm(false);
                           setSelected(
                             selected.size === files.length
                               ? new Set()
                               : new Set(files.map((f) => f.id)),
-                          )
-                        }
+                          );
+                        }}
                       >
                         {selected.size === files.length
                           ? "Deselect all"
@@ -902,7 +906,7 @@ function App() {
                       ) : confirm ? (
                         <div className="confirm-empty">
                           <p>
-                            Send {selected.size} selected files to Windows
+                            Send {emptyIds.length} collected items to Windows
                             Recycle Bin?
                           </p>
                           <small>
@@ -921,10 +925,16 @@ function App() {
                               disabled={working || busy}
                               onClick={() =>
                                 run(async () => {
-                                  const result = await api.empty([...selected]);
+                                  const result = await api.empty(emptyIds);
                                   setSkipped(result.skipped || []);
                                   setConfirm(false);
-                                  setSelected(new Set());
+                                  setSelected(
+                                    new Set(
+                                      (result.skipped || []).map(
+                                        (item) => item.id,
+                                      ),
+                                    ),
+                                  );
                                 })
                               }
                             >
@@ -949,12 +959,26 @@ function App() {
                             Leave files alone
                           </button>
                           <button
-                            className="start-button"
+                            className="outline-button"
                             disabled={!selected.size || working || busy}
-                            onClick={() => setConfirm(true)}
+                            onClick={() => {
+                              setEmptyIds([...selected]);
+                              setConfirm(true);
+                            }}
                           >
                             <Trash2 size={17} />
                             Empty selected · {selected.size}
+                          </button>
+                          <button
+                            className="start-button empty-entire-bin"
+                            disabled={!s.bin.count || working || busy}
+                            onClick={() => {
+                              setEmptyIds(s.bin.files.map((file) => file.id));
+                              setConfirm(true);
+                            }}
+                          >
+                            <Trash2 size={17} />
+                            Empty entire bin · {s.bin.count.toLocaleString()}
                           </button>
                         </>
                       )}

@@ -110,7 +110,7 @@ export default function TaskbarCompanion({ theme, phase }) {
       // The side brush sits below the shell; only its outer bristles show.
       if (working && !reduced) {
         c.strokeStyle = s.theme === "light" ? "#c3ccb8" : "#8b9c7a";
-        c.lineWidth = 0.7;
+        c.lineWidth = Math.min(0.7, r * 0.05);
         const spin = now * 0.015;
         c.save();
         c.translate(r * 0.55, r * 0.7);
@@ -119,7 +119,7 @@ export default function TaskbarCompanion({ theme, phase }) {
           c.rotate((Math.PI * 2) / 3);
           c.beginPath();
           c.moveTo(0, 0);
-          c.lineTo(4, 0);
+          c.lineTo(r * 0.2, 0);
           c.stroke();
         }
         c.restore();

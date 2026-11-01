@@ -191,7 +191,8 @@
 .tray-bin .file-row span {
   font-size: 10px;
 }
-.tray-bin .primary-button {
+.tray-bin .primary-button,
+.tray-bin .outline-button {
   width: 100%;
   margin-top: 10px;
   min-height: 34px;
